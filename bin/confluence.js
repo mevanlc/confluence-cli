@@ -71,7 +71,7 @@ program
 program
   .command('search <query>')
   .description('Search for Confluence pages')
-  .option('-l, --limit <limit>', 'Limit number of results', '10')
+  .option('-l, --limit <limit>', 'Limit number of results', '15')
   .action(async (query, options) => {
     const analytics = new Analytics();
     try {
@@ -470,13 +470,15 @@ program
 program
   .command('export <pageId>')
   .description('Export a page to a directory with its attachments')
-  .option('--format <format>', 'Content format (html, text, markdown)', 'markdown')
-  .option('--dest <directory>', 'Base directory to export into', '.')
-  .option('--file <filename>', 'Content filename (default: page.<ext>)')
-  .option('--attachments-dir <name>', 'Subdirectory for attachments', 'attachments')
-  .option('--pattern <glob>', 'Filter attachments by filename (e.g., "*.png")')
-  .option('--referenced-only', 'Download only attachments referenced in the page content')
-  .option('--skip-attachments', 'Do not download attachments')
+  .option('-f, --format <format>', 'Content format (html, text, markdown)', 'markdown')
+  .option('-d, --dest <directory>', 'Base directory to export into', '.')
+  .option('-o, --file <filename>', 'Content filename (default: <title>.<ext>)')
+  .option('-a, --attachments-dir <name>', 'Subdirectory for attachments', 'attachments')
+  .option('-p, --pattern <glob>', 'Filter attachments by filename (e.g., "*.png")')
+  .option('-r, --referenced-only', 'Download only attachments referenced in the page content')
+  .option('-s, --skip-attachments', 'Do not download attachments')
+  .option('-w, --subdir-when <mode>', 'Create subdir: auto (if attachments), always, never', 'auto')
+  .option('-O, --stdout', 'Write content to stdout (skips attachments)')
   .action(async (pageId, options) => {
     const analytics = new Analytics();
     try {
@@ -484,6 +486,11 @@ program
       const client = new ConfluenceClient(config);
       const fs = require('fs');
       const path = require('path');
+
+      const subdirWhen = (options.subdirWhen || 'auto').toLowerCase();
+      if (!['auto', 'always', 'never'].includes(subdirWhen)) {
+        throw new Error(`Invalid --subdir-when value: ${options.subdirWhen}. Must be auto, always, or never.`);
+      }
 
       const format = (options.format || 'markdown').toLowerCase();
       const formatExt = { markdown: 'md', html: 'html', text: 'txt' };
@@ -495,17 +502,68 @@ program
         format,
         options.referencedOnly ? { extractReferencedAttachments: true } : {}
       );
+
+      // --stdout: write to stdout and exit early
+      if (options.stdout) {
+        process.stdout.write(content);
+        analytics.track('export', true);
+        return;
+      }
+
       const referencedAttachments = options.referencedOnly
         ? (client._referencedAttachments || new Set())
         : null;
 
-      const baseDir = path.resolve(options.dest || '.');
-      const folderName = sanitizeTitle(pageInfo.title || 'page');
-      const exportDir = path.join(baseDir, folderName);
-      fs.mkdirSync(exportDir, { recursive: true });
+      // Determine which attachments will be downloaded (needed for 'auto' mode)
+      let filteredAttachments = [];
+      if (!options.skipAttachments) {
+        const pattern = options.pattern ? options.pattern.trim() : null;
+        const allAttachments = await client.getAllAttachments(pageId);
 
-      const contentFile = options.file || `page.${contentExt}`;
-      const contentPath = path.join(exportDir, contentFile);
+        if (pattern) {
+          filteredAttachments = allAttachments.filter(att => client.matchesPattern(att.title, pattern));
+        } else if (options.referencedOnly) {
+          filteredAttachments = allAttachments.filter(att => referencedAttachments?.has(att.title));
+        } else {
+          filteredAttachments = allAttachments;
+        }
+      }
+
+      const baseDir = path.resolve(options.dest || '.');
+      const baseName = sanitizeTitle(pageInfo.title || 'page');
+
+      // Helper to find unique path by appending -N suffix
+      const uniquePath = (targetPath, isDir = false) => {
+        if (!fs.existsSync(targetPath)) return targetPath;
+        const parsed = path.parse(targetPath);
+        let counter = 1;
+        while (true) {
+          const newName = isDir
+            ? `${parsed.name}-${counter}`
+            : `${parsed.name}-${counter}${parsed.ext}`;
+          const attempt = path.join(parsed.dir, newName);
+          if (!fs.existsSync(attempt)) return attempt;
+          counter += 1;
+        }
+      };
+
+      // Decide whether to create a subdirectory
+      const multipleFiles = filteredAttachments.length > 0;
+      const shouldCreateDir =
+        subdirWhen === 'always' ||
+        (subdirWhen === 'auto' && multipleFiles);
+
+      let exportDir;
+      if (shouldCreateDir) {
+        exportDir = uniquePath(path.join(baseDir, baseName), true);
+        fs.mkdirSync(exportDir, { recursive: true });
+      } else {
+        exportDir = baseDir;
+        fs.mkdirSync(exportDir, { recursive: true });
+      }
+
+      const contentFileName = options.file || `${baseName}.${contentExt}`;
+      const contentPath = uniquePath(path.join(exportDir, contentFileName));
       fs.writeFileSync(contentPath, content);
 
       console.log(chalk.green('✅ Page exported'));
@@ -513,37 +571,12 @@ program
       console.log(`Content: ${chalk.gray(contentPath)}`);
 
       if (!options.skipAttachments) {
-        const pattern = options.pattern ? options.pattern.trim() : null;
-        const allAttachments = await client.getAllAttachments(pageId);
-        
-        let filtered;
-        if (pattern) {
-          filtered = allAttachments.filter(att => client.matchesPattern(att.title, pattern));
-        } else if (options.referencedOnly) {
-          filtered = allAttachments.filter(att => referencedAttachments?.has(att.title));
-        } else {
-          filtered = allAttachments;
-        }
-
-        if (filtered.length === 0) {
+        if (filteredAttachments.length === 0) {
           console.log(chalk.yellow('No attachments to download.'));
         } else {
           const attachmentsDirName = options.attachmentsDir || 'attachments';
           const attachmentsDir = path.join(exportDir, attachmentsDirName);
           fs.mkdirSync(attachmentsDir, { recursive: true });
-
-          const uniquePathFor = (dir, filename) => {
-            const parsed = path.parse(filename);
-            let attempt = path.join(dir, filename);
-            let counter = 1;
-            while (fs.existsSync(attempt)) {
-              const suffix = ` (${counter})`;
-              const nextName = `${parsed.name}${suffix}${parsed.ext}`;
-              attempt = path.join(dir, nextName);
-              counter += 1;
-            }
-            return attempt;
-          };
 
           const writeStream = (stream, targetPath) => new Promise((resolve, reject) => {
             const writer = fs.createWriteStream(targetPath);
@@ -554,8 +587,8 @@ program
           });
 
           let downloaded = 0;
-          for (const attachment of filtered) {
-            const targetPath = uniquePathFor(attachmentsDir, attachment.title);
+          for (const attachment of filteredAttachments) {
+            const targetPath = uniquePath(path.join(attachmentsDir, attachment.title));
             // Pass the full attachment object so downloadAttachment can use downloadLink directly
             const dataStream = await client.downloadAttachment(pageId, attachment);
             await writeStream(dataStream, targetPath);
