@@ -4,6 +4,7 @@ const { program } = require('commander');
 const chalk = require('chalk');
 const inquirer = require('inquirer');
 const ConfluenceClient = require('../lib/confluence-client');
+const { unsmartenPunctuation } = require('../lib/confluence-client');
 const { getConfig, initConfig } = require('../lib/config');
 const Analytics = require('../lib/analytics');
 const pkg = require('../package.json');
@@ -479,6 +480,7 @@ program
   .option('-s, --skip-attachments', 'Do not download attachments')
   .option('-w, --subdir-when <mode>', 'Create subdir: auto (if attachments), always, never', 'auto')
   .option('-O, --stdout', 'Write content to stdout (skips attachments)')
+  .option('-U, --unsmart', 'Replace smart/typographic punctuation with ASCII equivalents')
   .action(async (pageId, options) => {
     const analytics = new Analytics();
     try {
@@ -497,11 +499,15 @@ program
       const contentExt = formatExt[format] || 'txt';
 
       const pageInfo = await client.getPageInfo(pageId);
-      const content = await client.readPage(
+      let content = await client.readPage(
         pageId,
         format,
         options.referencedOnly ? { extractReferencedAttachments: true } : {}
       );
+
+      if (options.unsmart) {
+        content = unsmartenPunctuation(content);
+      }
 
       // --stdout: write to stdout and exit early
       if (options.stdout) {

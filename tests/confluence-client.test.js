@@ -1,4 +1,5 @@
 const ConfluenceClient = require('../lib/confluence-client');
+const { unsmartenPunctuation } = require('../lib/confluence-client');
 const MockAdapter = require('axios-mock-adapter');
 
 describe('ConfluenceClient', () => {
@@ -69,8 +70,18 @@ describe('ConfluenceClient', () => {
       expect(await client.extractPageId(123456789)).toBe(123456789);
     });
 
+    test('should extract page ID from /wiki/spaces/.../pages/ID URL', async () => {
+      const url = 'https://test.atlassian.net/wiki/spaces/TEST/pages/3370352644/Some+Page+Title';
+      expect(await client.extractPageId(url)).toBe('3370352644');
+    });
+
+    test('should extract page ID from /wiki/spaces/.../pages/ID URL with query params', async () => {
+      const url = 'https://nvoq.atlassian.net/wiki/spaces/NCDS/pages/3370352644/How+do+Apps+Get+Approved?atlOrigin=eyJpIjoiYTA2Mjc0In0';
+      expect(await client.extractPageId(url)).toBe('3370352644');
+    });
+
     test('should extract page ID from URL with pageId parameter', async () => {
-      const url = 'https://test.atlassian.net/wiki/spaces/TEST/pages/123456789/Page+Title';
+      const url = 'https://test.atlassian.net/wiki/viewpage.action';
       expect(await client.extractPageId(url + '?pageId=987654321')).toBe('987654321');
     });
 
@@ -380,6 +391,33 @@ describe('ConfluenceClient', () => {
       expect(client.parseNextStart('/rest/api/content/1/child/attachment?start=25')).toBe(25);
       expect(client.parseNextStart('/rest/api/content/1/child/attachment?limit=50')).toBeNull();
       expect(client.parseNextStart(null)).toBeNull();
+    });
+  });
+
+  describe('unsmartenPunctuation', () => {
+    test('should convert smart quotes to ASCII', () => {
+      expect(unsmartenPunctuation('\u201CHello\u201D')).toBe('"Hello"');
+      expect(unsmartenPunctuation('\u2018world\u2019')).toBe("'world'");
+    });
+
+    test('should convert dashes to ASCII', () => {
+      expect(unsmartenPunctuation('foo\u2014bar')).toBe('foo--bar');
+      expect(unsmartenPunctuation('foo\u2013bar')).toBe('foo-bar');
+      expect(unsmartenPunctuation('foo\u2011bar')).toBe('foo-bar');
+      expect(unsmartenPunctuation('5\u221210')).toBe('5-10');
+    });
+
+    test('should convert ellipsis to three dots', () => {
+      expect(unsmartenPunctuation('wait\u2026')).toBe('wait...');
+    });
+
+    test('should convert non-breaking space to regular space', () => {
+      expect(unsmartenPunctuation('hello\u00A0world')).toBe('hello world');
+    });
+
+    test('should leave guillemets and prime marks unchanged', () => {
+      expect(unsmartenPunctuation('\u00ABquote\u00BB')).toBe('\u00ABquote\u00BB');
+      expect(unsmartenPunctuation('5\u2032 9\u2033')).toBe('5\u2032 9\u2033');
     });
   });
 });
