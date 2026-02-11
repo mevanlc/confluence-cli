@@ -245,7 +245,7 @@ describe('ConfluenceClient', () => {
     test('should convert HTML lists to markdown', () => {
       const html = '<ul><li><p>Item 1</p></li><li><p>Item 2</p></li></ul>';
       const result = client.htmlToMarkdown(html);
-      
+
       expect(result).toContain('- Item 1');
       expect(result).toContain('- Item 2');
     });
