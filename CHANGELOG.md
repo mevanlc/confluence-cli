@@ -1,3 +1,24 @@
+## [1.15.1](https://github.com/pchuri/confluence-cli/compare/v1.15.0...v1.15.1) (2026-02-12)
+
+
+### Bug Fixes
+
+* parse page ID from pretty URLs ([#34](https://github.com/pchuri/confluence-cli/issues/34)) ([6f22cd5](https://github.com/pchuri/confluence-cli/commit/6f22cd5424aec11a330a3cc7faf9cbeccb943168))
+
+# [1.15.0](https://github.com/pchuri/confluence-cli/compare/v1.14.0...v1.15.0) (2026-02-06)
+
+
+### Features
+
+* Add CLI flags to confluence init for non-interactive setup ([#30](https://github.com/pchuri/confluence-cli/issues/30)) ([09b6b85](https://github.com/pchuri/confluence-cli/commit/09b6b85a243da5ab86eb61a1a2376a64ce6979c7))
+
+# [1.14.0](https://github.com/pchuri/confluence-cli/compare/v1.13.0...v1.14.0) (2026-02-03)
+
+
+### Features
+
+* add comments support to CLI ([d40de55](https://github.com/pchuri/confluence-cli/commit/d40de55573aa71409b3aa2743531f2a4cb5a4eda)), closes [#28](https://github.com/pchuri/confluence-cli/issues/28)
+
 # [1.13.0](https://github.com/pchuri/confluence-cli/compare/v1.12.1...v1.13.0) (2026-01-08)
 
 
