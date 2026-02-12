@@ -1,3 +1,10 @@
+## [1.15.1](https://github.com/pchuri/confluence-cli/compare/v1.15.0...v1.15.1) (2026-02-12)
+
+
+### Bug Fixes
+
+* parse page ID from pretty URLs ([#34](https://github.com/pchuri/confluence-cli/issues/34)) ([6f22cd5](https://github.com/pchuri/confluence-cli/commit/6f22cd5424aec11a330a3cc7faf9cbeccb943168))
+
 # [1.15.0](https://github.com/pchuri/confluence-cli/compare/v1.14.0...v1.15.0) (2026-02-06)
 
 
