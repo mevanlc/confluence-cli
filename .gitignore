@@ -83,3 +83,7 @@ Thumbs.db
 
 # Configuration files with sensitive data
 config.json
+
+# Lockfiles for other package managers (this project uses pnpm)
+package-lock.json
+yarn.lock
