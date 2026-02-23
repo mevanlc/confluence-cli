@@ -10,7 +10,7 @@ const Analytics = require('../lib/analytics');
 const pkg = require('../package.json');
 
 program
-  .name('confluence')
+  .name(process.argv0)
   .description('CLI tool for Atlassian Confluence')
   .version(pkg.version);
 
@@ -50,18 +50,29 @@ program
 program
   .command('info <pageId>')
   .description('Get information about a Confluence page')
-  .action(async (pageId) => {
+  .option('--no-ancestors', 'Do not show ancestor pages')
+  .option('--json', 'Output full API response as JSON')
+  .action(async (pageId, options) => {
     const analytics = new Analytics();
     try {
       const client = new ConfluenceClient(getConfig());
-      const info = await client.getPageInfo(pageId);
-      console.log(chalk.blue('Page Information:'));
-      console.log(`Title: ${chalk.green(info.title)}`);
-      console.log(`ID: ${chalk.green(info.id)}`);
-      console.log(`Type: ${chalk.green(info.type)}`);
-      console.log(`Status: ${chalk.green(info.status)}`);
-      if (info.space) {
-        console.log(`Space: ${chalk.green(info.space.name)} (${info.space.key})`);
+      if (options.json) {
+        const data = await client.getPageInfo(pageId, { ancestors: options.ancestors, raw: true });
+        console.log(JSON.stringify(data, null, 2));
+      } else {
+        const info = await client.getPageInfo(pageId, { ancestors: options.ancestors });
+        console.log(chalk.blue('Page Information:'));
+        console.log(`Title: ${chalk.green(info.title)}`);
+        console.log(`ID: ${chalk.green(info.id)}`);
+        console.log(`Type: ${chalk.green(info.type)}`);
+        console.log(`Status: ${chalk.green(info.status)}`);
+        if (info.space) {
+          console.log(`Space: ${chalk.green(info.space.name)} (${info.space.key})`);
+        }
+        if (info.ancestors && info.ancestors.length > 0) {
+          console.log(chalk.blue('Ancestors:'));
+          info.ancestors.forEach(a => console.log(`  - ${chalk.green(a.title)} (${a.id})`));
+        }
       }
       analytics.track('info', true);
     } catch (error) {
@@ -1099,6 +1110,59 @@ program
       analytics.track('copy_tree', true);
     } catch (error) {
       analytics.track('copy_tree', false);
+      console.error(chalk.red('Error:'), error.message);
+      process.exit(1);
+    }
+  });
+
+// Batch create command
+program
+  .command('batch-create <directory> <parentId>')
+  .description('Create child pages from a directory of markdown files with inter-page link resolution')
+  .option('--dry-run', 'Preview what would be created without making API calls', false)
+  .option('--delay-ms <ms>', 'Pause between page creations in milliseconds', '100')
+  .option('--no-index', 'Do not apply index.md to parent page; create it as a child instead')
+  .action(async (directory, parentId, options) => {
+    const analytics = new Analytics();
+    const fs = require('fs');
+    const path = require('path');
+
+    const resolvedDir = path.resolve(directory);
+    if (!fs.existsSync(resolvedDir) || !fs.statSync(resolvedDir).isDirectory()) {
+      console.error(chalk.red(`Error: "${directory}" is not a directory`));
+      process.exit(1);
+    }
+
+    try {
+      const client = new ConfluenceClient(getConfig());
+      const result = await client.batchCreatePages(resolvedDir, parentId, {
+        dryRun: options.dryRun,
+        delayMs: parseInt(options.delayMs, 10) || 100,
+        applyIndex: options.index,
+        onProgress: (msg) => console.log(msg)
+      });
+
+      // Summary
+      console.log('');
+      if (options.dryRun) {
+        console.log(chalk.yellow('Dry run complete (no changes made)'));
+      }
+      console.log(chalk.blue('Summary:'));
+      console.log(`  Created: ${chalk.green(result.created.length)} pages`);
+      if (result.skipped.length > 0) {
+        console.log(`  Skipped: ${chalk.yellow(result.skipped.length)} (already exist)`);
+      }
+      if (result.parentUpdated) {
+        console.log(`  Parent:  ${chalk.green('updated from index.md')}`);
+      }
+      if (result.warnings.length > 0) {
+        console.log(`  Warnings: ${chalk.yellow(result.warnings.length)}`);
+        result.warnings.forEach(w => console.log(`    ${chalk.yellow('⚠')} ${w}`));
+      }
+
+      analytics.track('batch_create', true);
+    } catch (error) {
+      analytics.track('batch_create', false);
       console.error(chalk.red('Error:'), error.message);
       process.exit(1);
     }
