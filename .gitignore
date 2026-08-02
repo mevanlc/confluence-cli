@@ -87,6 +87,6 @@ Thumbs.db
 # Configuration files with sensitive data
 config.json
 
-# Lockfiles for other package managers (this project uses pnpm)
-package-lock.json
+# Lockfiles for other package managers (this project uses npm)
+pnpm-lock.yaml
 yarn.lock
