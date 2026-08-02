@@ -1,3 +1,620 @@
+## [2.19.1](https://github.com/pchuri/confluence-cli/compare/v2.19.0...v2.19.1) (2026-07-23)
+
+
+### Bug Fixes
+
+* escape passthrough tags in rendered attributes ([#222](https://github.com/pchuri/confluence-cli/issues/222)) ([71f1b31](https://github.com/pchuri/confluence-cli/commit/71f1b318b97dab815a6c41750291c1c44536f1dc))
+
+# [2.19.0](https://github.com/pchuri/confluence-cli/compare/v2.18.1...v2.19.0) (2026-07-23)
+
+
+### Features
+
+* emit structured errors in JSON mode ([#221](https://github.com/pchuri/confluence-cli/issues/221)) ([45a0b87](https://github.com/pchuri/confluence-cli/commit/45a0b8745dc02e92f2feb64a760ca2b225f84f56))
+
+## [2.18.1](https://github.com/pchuri/confluence-cli/compare/v2.18.0...v2.18.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* bump axios to ^1.18.1 and linkify-it to 5.0.2 to resolve audit failures ([#220](https://github.com/pchuri/confluence-cli/issues/220)) ([778c639](https://github.com/pchuri/confluence-cli/commit/778c6394ca47888f1878be4af6651a7a7a4a43b7))
+
+# [2.18.0](https://github.com/pchuri/confluence-cli/compare/v2.17.1...v2.18.0) (2026-07-19)
+
+
+### Features
+
+* retry rate-limited requests and share pagination logic ([#218](https://github.com/pchuri/confluence-cli/issues/218)) ([281b9a6](https://github.com/pchuri/confluence-cli/commit/281b9a68cca4d8c8257703fe3230ff7b06676d8f))
+
+## [2.17.1](https://github.com/pchuri/confluence-cli/compare/v2.17.0...v2.17.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* match Cloud domains case-insensitively when inferring API path ([1c0455f](https://github.com/pchuri/confluence-cli/commit/1c0455f9309990f2f33455ff43c93c4e3e74711d))
+
+# [2.17.0](https://github.com/pchuri/confluence-cli/compare/v2.16.2...v2.17.0) (2026-07-17)
+
+
+### Features
+
+* add NETRC support ([#216](https://github.com/pchuri/confluence-cli/issues/216)) ([79d1757](https://github.com/pchuri/confluence-cli/commit/79d17578f128eb21db6beac92e8c07a8849e0300))
+
+## [2.16.2](https://github.com/pchuri/confluence-cli/compare/v2.16.1...v2.16.2) (2026-07-15)
+
+
+### Bug Fixes
+
+* preserve same-space page links in Markdown ([#217](https://github.com/pchuri/confluence-cli/issues/217)) ([d59a25a](https://github.com/pchuri/confluence-cli/commit/d59a25af79d1ad4f07b8def380513c1d6f87da8e)), closes [#215](https://github.com/pchuri/confluence-cli/issues/215)
+
+## [2.16.1](https://github.com/pchuri/confluence-cli/compare/v2.16.0...v2.16.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* render external links as standard anchors ([#214](https://github.com/pchuri/confluence-cli/issues/214)) ([2fa54fb](https://github.com/pchuri/confluence-cli/commit/2fa54fb396bc5a7e7b46792af4cc296856447d4a))
+
+# [2.16.0](https://github.com/pchuri/confluence-cli/compare/v2.15.1...v2.16.0) (2026-07-09)
+
+
+### Features
+
+* support Confluence macro placeholders ([b7deb0d](https://github.com/pchuri/confluence-cli/commit/b7deb0dd667d842140fe4297c8eee914c7c6cfbb)), closes [#210](https://github.com/pchuri/confluence-cli/issues/210) [#211](https://github.com/pchuri/confluence-cli/issues/211)
+
+## [2.15.1](https://github.com/pchuri/confluence-cli/compare/v2.15.0...v2.15.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* **convert:** pass through <br> in markdown so table cells can have line breaks ([#209](https://github.com/pchuri/confluence-cli/issues/209)) ([ae811e4](https://github.com/pchuri/confluence-cli/commit/ae811e4b7d64a3ed294632b1f0a5699b2dc52a60))
+
+# [2.15.0](https://github.com/pchuri/confluence-cli/compare/v2.14.1...v2.15.0) (2026-06-26)
+
+
+### Features
+
+* support XDG Base Directory Specification for config location ([#208](https://github.com/pchuri/confluence-cli/issues/208)) ([b8d63fd](https://github.com/pchuri/confluence-cli/commit/b8d63fdadee472c80aa7e2f4314770c6242424c7))
+
+## [2.14.1](https://github.com/pchuri/confluence-cli/compare/v2.14.0...v2.14.1) (2026-06-24)
+
+
+### Bug Fixes
+
+* **api:** prevent cross-origin credential leakage ([#207](https://github.com/pchuri/confluence-cli/issues/207)) ([1d614b2](https://github.com/pchuri/confluence-cli/commit/1d614b2900871cf2ecb646a761c16a689284f8d2))
+* clarify bodyless Confluence content errors ([#206](https://github.com/pchuri/confluence-cli/issues/206)) ([62fee88](https://github.com/pchuri/confluence-cli/commit/62fee88ef0eba2ef09a84545f0d63f433cafad3d))
+
+# [2.14.0](https://github.com/pchuri/confluence-cli/compare/v2.13.0...v2.14.0) (2026-06-21)
+
+
+### Features
+
+* add --json output to mutation commands ([#205](https://github.com/pchuri/confluence-cli/issues/205)) ([bccdbd3](https://github.com/pchuri/confluence-cli/commit/bccdbd3b2f995be9bb9ab847dfefae725d953794)), closes [#203](https://github.com/pchuri/confluence-cli/issues/203)
+
+# [2.13.0](https://github.com/pchuri/confluence-cli/compare/v2.12.0...v2.13.0) (2026-06-20)
+
+
+### Features
+
+* add global --json flag and deprecate per-command --format json ([#204](https://github.com/pchuri/confluence-cli/issues/204)) ([ee523ee](https://github.com/pchuri/confluence-cli/commit/ee523eeaa5c1acb0ebb309bcf890dfba320aff36)), closes [#203](https://github.com/pchuri/confluence-cli/issues/203)
+
+# [2.12.0](https://github.com/pchuri/confluence-cli/compare/v2.11.2...v2.12.0) (2026-06-12)
+
+
+### Features
+
+* add --format auto option for write commands ([#200](https://github.com/pchuri/confluence-cli/issues/200)) ([89059c6](https://github.com/pchuri/confluence-cli/commit/89059c6187c089813f002cb9b0513822c4d363a1))
+
+## [2.11.2](https://github.com/pchuri/confluence-cli/compare/v2.11.1...v2.11.2) (2026-06-05)
+
+
+### Bug Fixes
+
+* **attachments:** use REST download endpoint on Cloud to fix 401 ([#199](https://github.com/pchuri/confluence-cli/issues/199)) ([ceea6e8](https://github.com/pchuri/confluence-cli/commit/ceea6e876f99f66f7e822da052491d741095b12c)), closes [#198](https://github.com/pchuri/confluence-cli/issues/198) [#80](https://github.com/pchuri/confluence-cli/issues/80)
+
+## [2.11.1](https://github.com/pchuri/confluence-cli/compare/v2.11.0...v2.11.1) (2026-06-01)
+
+
+### Bug Fixes
+
+* **config:** prevent init crash when existing config lacks a profiles key ([#197](https://github.com/pchuri/confluence-cli/issues/197)) ([cd235d7](https://github.com/pchuri/confluence-cli/commit/cd235d741dd3fa6c20f6b1345421e9c2f1ffe0e3))
+
+# [2.11.0](https://github.com/pchuri/confluence-cli/compare/v2.10.0...v2.11.0) (2026-05-30)
+
+
+### Bug Fixes
+
+* **deps:** bump axios to ~1.16.1 to address high-severity advisories ([#194](https://github.com/pchuri/confluence-cli/issues/194)) ([2be46b2](https://github.com/pchuri/confluence-cli/commit/2be46b256061c8d4069c7d7117d51ddc8da488ac))
+
+
+### Features
+
+* convert markdown plantuml fences to confluence plantuml macro ([#193](https://github.com/pchuri/confluence-cli/issues/193)) ([c88f9dd](https://github.com/pchuri/confluence-cli/commit/c88f9ddffb1edcedc6cd8be2c86e6a6758d4920c))
+
+# [2.10.0](https://github.com/pchuri/confluence-cli/compare/v2.9.0...v2.10.0) (2026-05-29)
+
+
+### Features
+
+* add plantuml macro support to markdown conversion ([#192](https://github.com/pchuri/confluence-cli/issues/192)) ([f1538db](https://github.com/pchuri/confluence-cli/commit/f1538dbd7c1e4023d5752ae02c6c7291c34322c1))
+
+# [2.9.0](https://github.com/pchuri/confluence-cli/compare/v2.8.0...v2.9.0) (2026-05-28)
+
+
+### Features
+
+* add `api` command for arbitrary authenticated requests ([#189](https://github.com/pchuri/confluence-cli/issues/189)) ([4852b77](https://github.com/pchuri/confluence-cli/commit/4852b77c31d87cfd1e7c5ff836bbcfadb007d27c)), closes [#186](https://github.com/pchuri/confluence-cli/issues/186) [#184](https://github.com/pchuri/confluence-cli/issues/184)
+
+# [2.8.0](https://github.com/pchuri/confluence-cli/compare/v2.7.0...v2.8.0) (2026-05-23)
+
+
+### Features
+
+* **auth:** add 'none' auth type for reverse-proxy injected credentials ([#190](https://github.com/pchuri/confluence-cli/issues/190)) ([21a03bd](https://github.com/pchuri/confluence-cli/commit/21a03bd9fd11dc000c793f22254c2414e7939f22))
+
+# [2.7.0](https://github.com/pchuri/confluence-cli/compare/v2.6.3...v2.7.0) (2026-05-18)
+
+
+### Features
+
+* **search:** add start offset pagination ([#188](https://github.com/pchuri/confluence-cli/issues/188)) ([f8c73bd](https://github.com/pchuri/confluence-cli/commit/f8c73bd24cc93cc0c9fa1327f9474f445ea89875))
+
+## [2.6.3](https://github.com/pchuri/confluence-cli/compare/v2.6.2...v2.6.3) (2026-05-12)
+
+
+### Bug Fixes
+
+* **convert:** read stdin as a stream and guard against TTY-only invocations ([#184](https://github.com/pchuri/confluence-cli/issues/184)) ([fda2860](https://github.com/pchuri/confluence-cli/commit/fda2860517870ec7245364809a4520c4d94d0113))
+
+## [2.6.2](https://github.com/pchuri/confluence-cli/compare/v2.6.1...v2.6.2) (2026-05-12)
+
+
+### Bug Fixes
+
+* **client:** route createPage/createChildPage html through htmlToConfluenceStorage ([#183](https://github.com/pchuri/confluence-cli/issues/183)) ([6946cd7](https://github.com/pchuri/confluence-cli/commit/6946cd76e8c90b51b23cd3459284fab5d9317624))
+
+## [2.6.1](https://github.com/pchuri/confluence-cli/compare/v2.6.0...v2.6.1) (2026-05-10)
+
+
+### Bug Fixes
+
+* **convert:** route html → markdown through htmlToMarkdown ([#180](https://github.com/pchuri/confluence-cli/issues/180)) ([384d631](https://github.com/pchuri/confluence-cli/commit/384d63141fecdfa8a6d6b642f1928716b5c71a5d))
+
+# [2.6.0](https://github.com/pchuri/confluence-cli/compare/v2.5.0...v2.6.0) (2026-05-07)
+
+
+### Features
+
+* **converter:** add details/summary and HTML block support to markdown conversion ([#177](https://github.com/pchuri/confluence-cli/issues/177)) ([a4cc7a0](https://github.com/pchuri/confluence-cli/commit/a4cc7a04746f9a56798babf7d16e59eb40ed439c))
+
+# [2.5.0](https://github.com/pchuri/confluence-cli/compare/v2.4.0...v2.5.0) (2026-05-06)
+
+
+### Bug Fixes
+
+* **deps:** bump axios to ~1.15.2 to address security advisories ([#174](https://github.com/pchuri/confluence-cli/issues/174)) ([0a1492b](https://github.com/pchuri/confluence-cli/commit/0a1492ba0ffea887c9d392cd8f0a68c57144348e)), closes [GHSA-w9j2-pv#6h63](https://github.com/GHSA-w9j2-pv/issues/6h63) [#173](https://github.com/pchuri/confluence-cli/issues/173)
+* **walker:** preserve attributes on <ul>/<ol>/<li> in markdown→storage ([#170](https://github.com/pchuri/confluence-cli/issues/170)) ([b5c172a](https://github.com/pchuri/confluence-cli/commit/b5c172a79508203cfa45eda335e1c4fa8f4a3ef6)), closes [#153](https://github.com/pchuri/confluence-cli/issues/153)
+
+
+### Features
+
+* add page version listing and purge commands ([#171](https://github.com/pchuri/confluence-cli/issues/171)) ([2bd5c37](https://github.com/pchuri/confluence-cli/commit/2bd5c3735c1e14ca9b16dd32f53042df9e459ad9))
+
+# [2.4.0](https://github.com/pchuri/confluence-cli/compare/v2.3.1...v2.4.0) (2026-05-04)
+
+
+### Features
+
+* **spaces:** paginate getSpaces and add --all flag ([#169](https://github.com/pchuri/confluence-cli/issues/169)) ([f967861](https://github.com/pchuri/confluence-cli/commit/f96786137e172f4d7e5140ce54d8df79190adc3b)), closes [#168](https://github.com/pchuri/confluence-cli/issues/168)
+
+## [2.3.1](https://github.com/pchuri/confluence-cli/compare/v2.3.0...v2.3.1) (2026-05-04)
+
+
+### Bug Fixes
+
+* **walker:** preserve <u>/<sub>/<sup>/<mark> on storage ↔ markdown round-trip ([#167](https://github.com/pchuri/confluence-cli/issues/167)) ([a6857db](https://github.com/pchuri/confluence-cli/commit/a6857db27378e0754f88e6e8215592f56e862030)), closes [#155](https://github.com/pchuri/confluence-cli/issues/155) [#2](https://github.com/pchuri/confluence-cli/issues/2)
+
+# [2.3.0](https://github.com/pchuri/confluence-cli/compare/v2.2.0...v2.3.0) (2026-05-03)
+
+
+### Features
+
+* add --type flag for folder support ([#165](https://github.com/pchuri/confluence-cli/issues/165)) ([d2958c8](https://github.com/pchuri/confluence-cli/commit/d2958c80c872b13f3009611379bf7e6053c733bc)), closes [#164](https://github.com/pchuri/confluence-cli/issues/164)
+
+# [2.2.0](https://github.com/pchuri/confluence-cli/compare/v2.1.12...v2.2.0) (2026-05-03)
+
+
+### Features
+
+* **client:** add limit configurable in getSpaces and spaces command ([#166](https://github.com/pchuri/confluence-cli/issues/166)) ([c4d3830](https://github.com/pchuri/confluence-cli/commit/c4d383013df9f4445a0fb512101b9b1829e35368))
+
+## [2.1.12](https://github.com/pchuri/confluence-cli/compare/v2.1.11...v2.1.12) (2026-05-03)
+
+
+### Bug Fixes
+
+* **walker:** surface parser warnings for malformed storage XML ([#144](https://github.com/pchuri/confluence-cli/issues/144)) ([#162](https://github.com/pchuri/confluence-cli/issues/162)) ([995cdaa](https://github.com/pchuri/confluence-cli/commit/995cdaafee1869dcbca1a855b1713a1f31e54f33))
+
+## [2.1.11](https://github.com/pchuri/confluence-cli/compare/v2.1.10...v2.1.11) (2026-05-01)
+
+
+### Bug Fixes
+
+* **walker:** drop malformed markers for empty expand title and shared-block key ([#158](https://github.com/pchuri/confluence-cli/issues/158)) ([#161](https://github.com/pchuri/confluence-cli/issues/161)) ([3a49a57](https://github.com/pchuri/confluence-cli/commit/3a49a57976bfb527ca6149d4ef55548393c56636))
+
+## [2.1.10](https://github.com/pchuri/confluence-cli/compare/v2.1.9...v2.1.10) (2026-05-01)
+
+
+### Bug Fixes
+
+* **walker:** drop malformed marker text for empty/missing macro params ([#140](https://github.com/pchuri/confluence-cli/issues/140)) ([#157](https://github.com/pchuri/confluence-cli/issues/157)) ([ecde713](https://github.com/pchuri/confluence-cli/commit/ecde713ef2d78fddfc31291f7a089c4760ff49c7))
+
+## [2.1.9](https://github.com/pchuri/confluence-cli/compare/v2.1.8...v2.1.9) (2026-05-01)
+
+
+### Bug Fixes
+
+* **walker:** escape markdown special chars in ri:content-title ([#143](https://github.com/pchuri/confluence-cli/issues/143)) ([#156](https://github.com/pchuri/confluence-cli/issues/156)) ([3e3c53e](https://github.com/pchuri/confluence-cli/commit/3e3c53e53a783091055174625ac980bf3b45ce4a))
+
+## [2.1.8](https://github.com/pchuri/confluence-cli/compare/v2.1.7...v2.1.8) (2026-04-30)
+
+
+### Bug Fixes
+
+* **walker:** preserve <s>/<del> strikethrough on storage → markdown ([#154](https://github.com/pchuri/confluence-cli/issues/154)) ([788efaf](https://github.com/pchuri/confluence-cli/commit/788efafee678c1fe4758c7ef361feccdf53db3a7)), closes [#141](https://github.com/pchuri/confluence-cli/issues/141) [#141](https://github.com/pchuri/confluence-cli/issues/141)
+
+## [2.1.7](https://github.com/pchuri/confluence-cli/compare/v2.1.6...v2.1.7) (2026-04-30)
+
+
+### Bug Fixes
+
+* **walker:** handle external <ri:url> images in handleImage ([#152](https://github.com/pchuri/confluence-cli/issues/152)) ([97e290b](https://github.com/pchuri/confluence-cli/commit/97e290bc3701f736f71044cd6074ae232f64249e)), closes [#142](https://github.com/pchuri/confluence-cli/issues/142)
+
+## [2.1.6](https://github.com/pchuri/confluence-cli/compare/v2.1.5...v2.1.6) (2026-04-29)
+
+
+### Bug Fixes
+
+* **html-to-markdown:** stop language token at whitespace in fence info ([#150](https://github.com/pchuri/confluence-cli/issues/150)) ([17a31e2](https://github.com/pchuri/confluence-cli/commit/17a31e2719e6426d0961903f2a55625d0091e4db)), closes [#148](https://github.com/pchuri/confluence-cli/issues/148)
+
+## [2.1.5](https://github.com/pchuri/confluence-cli/compare/v2.1.4...v2.1.5) (2026-04-29)
+
+
+### Bug Fixes
+
+* **html-to-markdown:** preserve indentation inside fenced code blocks ([#147](https://github.com/pchuri/confluence-cli/issues/147)) ([044e46b](https://github.com/pchuri/confluence-cli/commit/044e46b10b63d323634095e71edf81edbcecf177)), closes [#139](https://github.com/pchuri/confluence-cli/issues/139) [#146](https://github.com/pchuri/confluence-cli/issues/146) [#145](https://github.com/pchuri/confluence-cli/issues/145) [#149](https://github.com/pchuri/confluence-cli/issues/149) [#96](https://github.com/pchuri/confluence-cli/issues/96) [#x60](https://github.com/pchuri/confluence-cli/issues/x60) [#96](https://github.com/pchuri/confluence-cli/issues/96) [#96](https://github.com/pchuri/confluence-cli/issues/96) [#96](https://github.com/pchuri/confluence-cli/issues/96)
+
+## [2.1.4](https://github.com/pchuri/confluence-cli/compare/v2.1.3...v2.1.4) (2026-04-29)
+
+
+### Bug Fixes
+
+* **walker:** preserve indentation inside fenced code blocks ([#145](https://github.com/pchuri/confluence-cli/issues/145)) ([709aaee](https://github.com/pchuri/confluence-cli/commit/709aaee9266d34960b748db11700975ffdbfac62)), closes [#139](https://github.com/pchuri/confluence-cli/issues/139)
+
+## [2.1.3](https://github.com/pchuri/confluence-cli/compare/v2.1.2...v2.1.3) (2026-04-29)
+
+
+### Bug Fixes
+
+* **converter:** emit `> **MARKER**` form to close admonition round-trip ([#136](https://github.com/pchuri/confluence-cli/issues/136)) ([d5a2d9f](https://github.com/pchuri/confluence-cli/commit/d5a2d9f29d4aecf621e3fb1bb394b294d94a02f2)), closes [#135](https://github.com/pchuri/confluence-cli/issues/135)
+
+## [2.1.2](https://github.com/pchuri/confluence-cli/compare/v2.1.1...v2.1.2) (2026-04-28)
+
+
+### Bug Fixes
+
+* scope `[!info]` admonition rewrite to block context ([#134](https://github.com/pchuri/confluence-cli/issues/134)) ([ab28d23](https://github.com/pchuri/confluence-cli/commit/ab28d231161b23c929254d578bba84d5470ef7a4))
+
+## [2.1.1](https://github.com/pchuri/confluence-cli/compare/v2.1.0...v2.1.1) (2026-04-28)
+
+
+### Bug Fixes
+
+* strip callout markers and narrow detection to paragraph start ([#132](https://github.com/pchuri/confluence-cli/issues/132)) ([8bec8b3](https://github.com/pchuri/confluence-cli/commit/8bec8b36c98a9ef1929760aef313471f05bf10d4))
+
+# [2.1.0](https://github.com/pchuri/confluence-cli/compare/v2.0.2...v2.1.0) (2026-04-28)
+
+
+### Features
+
+* **converter:** add EXPAND marker for collapsible expand macro ([#130](https://github.com/pchuri/confluence-cli/issues/130)) ([efe0677](https://github.com/pchuri/confluence-cli/commit/efe067736e0abec034e08b4052f0375e4e066a94))
+
+## [2.0.2](https://github.com/pchuri/confluence-cli/compare/v2.0.1...v2.0.2) (2026-04-27)
+
+
+### Bug Fixes
+
+* **client:** isolate per-userkey failures in resolveUserKeysInHtml ([#129](https://github.com/pchuri/confluence-cli/issues/129)) ([4185b4a](https://github.com/pchuri/confluence-cli/commit/4185b4a46313ea681a85e25c694ff2ce1fa3fa5f))
+
+## [2.0.1](https://github.com/pchuri/confluence-cli/compare/v2.0.0...v2.0.1) (2026-04-27)
+
+
+### Bug Fixes
+
+* **config:** type-guard remaining CLI option validation against non-strings ([#128](https://github.com/pchuri/confluence-cli/issues/128)) ([c7c1a31](https://github.com/pchuri/confluence-cli/commit/c7c1a312820f25b62ac530bfad1d8f4156214534)), closes [#124](https://github.com/pchuri/confluence-cli/issues/124)
+
+# [2.0.0](https://github.com/pchuri/confluence-cli/compare/v1.35.0...v2.0.0) (2026-04-27)
+
+
+* feat!: change blockquote default from info macro to plain <blockquote> (#127) ([c162d68](https://github.com/pchuri/confluence-cli/commit/c162d68c4660ce2fddf7effd9b9ce5efdb7358f1)), closes [#127](https://github.com/pchuri/confluence-cli/issues/127) [#125](https://github.com/pchuri/confluence-cli/issues/125)
+
+
+### BREAKING CHANGES
+
+* Unmarked markdown blockquotes are no longer auto-wrapped in a Confluence info macro. To preserve the old behavior, prefix the blockquote with `> **INFO**`. Existing pages already containing info macros are unaffected — `storageToMarkdown` still emits `[!info]` for them, which `markdownToStorage` re-expands.
+
+# [1.35.0](https://github.com/pchuri/confluence-cli/compare/v1.34.0...v1.35.0) (2026-04-27)
+
+
+### Features
+
+* **converter:** round-trip anchor macros and same-page anchor links ([#126](https://github.com/pchuri/confluence-cli/issues/126)) ([3dfb276](https://github.com/pchuri/confluence-cli/commit/3dfb2765911c88630a0c73a63719fc52e1111db6)), closes [#118](https://github.com/pchuri/confluence-cli/issues/118)
+
+# [1.34.0](https://github.com/pchuri/confluence-cli/compare/v1.33.3...v1.34.0) (2026-04-27)
+
+
+### Features
+
+* add TOC, ANCHOR, and same-page anchor link conversions ([#118](https://github.com/pchuri/confluence-cli/issues/118)) ([213b910](https://github.com/pchuri/confluence-cli/commit/213b9102dcdf470a94ce8ee32616e37017f4c3b0)), closes [#125](https://github.com/pchuri/confluence-cli/issues/125)
+
+## [1.33.3](https://github.com/pchuri/confluence-cli/compare/v1.33.2...v1.33.3) (2026-04-27)
+
+
+### Bug Fixes
+
+* preserve href on <a> tags during markdown conversion ([#123](https://github.com/pchuri/confluence-cli/issues/123)) ([1b2036d](https://github.com/pchuri/confluence-cli/commit/1b2036d8d8b418ba90e5fbb1ead1bbfdeabd0ff8)), closes [#122](https://github.com/pchuri/confluence-cli/issues/122)
+
+## [1.33.2](https://github.com/pchuri/confluence-cli/compare/v1.33.1...v1.33.2) (2026-04-27)
+
+
+### Bug Fixes
+
+* **config:** harden CLI option and config-file parsing against bad input ([#124](https://github.com/pchuri/confluence-cli/issues/124)) ([1ee18ef](https://github.com/pchuri/confluence-cli/commit/1ee18ef33c3550a40155bec68f396959d857b52c))
+
+## [1.33.1](https://github.com/pchuri/confluence-cli/compare/v1.33.0...v1.33.1) (2026-04-26)
+
+
+### Bug Fixes
+
+* **security:** refuse cross-host attachment downloads ([#121](https://github.com/pchuri/confluence-cli/issues/121)) ([64b87c4](https://github.com/pchuri/confluence-cli/commit/64b87c4160b86c164b47862582fd47ce67d1f342))
+
+# [1.33.0](https://github.com/pchuri/confluence-cli/compare/v1.32.1...v1.33.0) (2026-04-24)
+
+
+### Features
+
+* add configurable linkStyle for storage-format link output ([#117](https://github.com/pchuri/confluence-cli/issues/117)) ([18aa60c](https://github.com/pchuri/confluence-cli/commit/18aa60c19dcce02028257902d07a50613860d5df))
+
+## [1.32.1](https://github.com/pchuri/confluence-cli/compare/v1.32.0...v1.32.1) (2026-04-24)
+
+
+### Bug Fixes
+
+* publish prod-only npm-shrinkwrap to avoid devDependency leakage ([#116](https://github.com/pchuri/confluence-cli/issues/116)) ([d2a7241](https://github.com/pchuri/confluence-cli/commit/d2a72419c1de92f8059521de29f576de2e58b72f)), closes [#110](https://github.com/pchuri/confluence-cli/issues/110)
+
+# [1.32.0](https://github.com/pchuri/confluence-cli/compare/v1.31.1...v1.32.0) (2026-04-24)
+
+
+### Features
+
+* add json metadata and storage read support ([#115](https://github.com/pchuri/confluence-cli/issues/115)) ([179fe4f](https://github.com/pchuri/confluence-cli/commit/179fe4fed4c77bf89589855d69abe8353a0dffe2))
+
+## [1.31.1](https://github.com/pchuri/confluence-cli/compare/v1.31.0...v1.31.1) (2026-04-22)
+
+
+### Performance Improvements
+
+* parallelize getAllDescendantPages sibling fetches ([#113](https://github.com/pchuri/confluence-cli/issues/113)) ([bdee5de](https://github.com/pchuri/confluence-cli/commit/bdee5deb4b28300ec644cafad99f6935d2dfc459))
+
+# [1.31.0](https://github.com/pchuri/confluence-cli/compare/v1.30.2...v1.31.0) (2026-04-22)
+
+
+### Features
+
+* add cookie authentication for Enterprise SSO ([#111](https://github.com/pchuri/confluence-cli/issues/111)) ([9fe55f3](https://github.com/pchuri/confluence-cli/commit/9fe55f38e4fdad97905cb824062f1af4723c45a5)), closes [#106](https://github.com/pchuri/confluence-cli/issues/106)
+
+## [1.30.2](https://github.com/pchuri/confluence-cli/compare/v1.30.1...v1.30.2) (2026-04-19)
+
+
+### Bug Fixes
+
+* escape regex metacharacters in userkey before replacement ([#109](https://github.com/pchuri/confluence-cli/issues/109)) ([394b72c](https://github.com/pchuri/confluence-cli/commit/394b72cf99a11614e394a3bedff52011f563843d))
+
+## [1.30.1](https://github.com/pchuri/confluence-cli/compare/v1.30.0...v1.30.1) (2026-04-15)
+
+
+### Bug Fixes
+
+* preserve internal page links with custom display text in markdown conversion ([#105](https://github.com/pchuri/confluence-cli/issues/105)) ([06382f3](https://github.com/pchuri/confluence-cli/commit/06382f3317c84c252adb03e0b956c3ca1a5fb66a)), closes [#104](https://github.com/pchuri/confluence-cli/issues/104)
+
+# [1.30.0](https://github.com/pchuri/confluence-cli/compare/v1.29.1...v1.30.0) (2026-04-13)
+
+
+### Features
+
+* support Confluence tiny links (/wiki/x/<code>) as pageId input ([#101](https://github.com/pchuri/confluence-cli/issues/101)) ([dcccc8e](https://github.com/pchuri/confluence-cli/commit/dcccc8e2420cda0e6b333be430845e1e68e7afaf)), closes [#100](https://github.com/pchuri/confluence-cli/issues/100)
+
+## [1.29.1](https://github.com/pchuri/confluence-cli/compare/v1.29.0...v1.29.1) (2026-04-11)
+
+
+### Bug Fixes
+
+* upgrade axios to ^1.15.0 to address security vulnerabilities ([#97](https://github.com/pchuri/confluence-cli/issues/97)) ([98344f4](https://github.com/pchuri/confluence-cli/commit/98344f4131ec3777c161c0aad516c59fb976daff)), closes [#96](https://github.com/pchuri/confluence-cli/issues/96)
+
+# [1.29.0](https://github.com/pchuri/confluence-cli/compare/v1.28.0...v1.29.0) (2026-04-09)
+
+
+### Features
+
+* add Claude Code marketplace plugin ([#95](https://github.com/pchuri/confluence-cli/issues/95)) ([026794e](https://github.com/pchuri/confluence-cli/commit/026794e351eee93e988b63c626864c17c88876a0))
+
+# [1.28.0](https://github.com/pchuri/confluence-cli/compare/v1.27.8...v1.28.0) (2026-04-04)
+
+
+### Features
+
+* add local format conversion command ([#92](https://github.com/pchuri/confluence-cli/issues/92)) ([5425e4e](https://github.com/pchuri/confluence-cli/commit/5425e4e53c33e57365dbefd02f404affa53b9e42)), closes [#91](https://github.com/pchuri/confluence-cli/issues/91)
+
+## [1.27.8](https://github.com/pchuri/confluence-cli/compare/v1.27.7...v1.27.8) (2026-04-02)
+
+
+### Bug Fixes
+
+* include npm-shrinkwrap.json in published package ([#90](https://github.com/pchuri/confluence-cli/issues/90)) ([58ad062](https://github.com/pchuri/confluence-cli/commit/58ad062d3fdac346fd4312faee46ae3ada8cbb92)), closes [#89](https://github.com/pchuri/confluence-cli/issues/89)
+
+## [1.27.7](https://github.com/pchuri/confluence-cli/compare/v1.27.6...v1.27.7) (2026-04-01)
+
+
+### Bug Fixes
+
+* publish npm-shrinkwrap.json to pin transitive dependencies ([#88](https://github.com/pchuri/confluence-cli/issues/88)) ([d0dffd2](https://github.com/pchuri/confluence-cli/commit/d0dffd2fa0f9def2cb3a4f6a8a711d14daf3c916)), closes [#86](https://github.com/pchuri/confluence-cli/issues/86)
+
+## [1.27.6](https://github.com/pchuri/confluence-cli/compare/v1.27.5...v1.27.6) (2026-03-26)
+
+
+### Bug Fixes
+
+* **docs:** correct search examples in SKILL.md to use --cql flag ([#84](https://github.com/pchuri/confluence-cli/issues/84)) ([86800b5](https://github.com/pchuri/confluence-cli/commit/86800b5fc064112f881299417d72b2df02b051ae))
+
+## [1.27.5](https://github.com/pchuri/confluence-cli/compare/v1.27.4...v1.27.5) (2026-03-23)
+
+
+### Bug Fixes
+
+* make wiki path prefix configurable based on apiPath ([#83](https://github.com/pchuri/confluence-cli/issues/83)) ([fb58a37](https://github.com/pchuri/confluence-cli/commit/fb58a37ebb3ec82fe9237017431c5f5fb59f824a)), closes [/github.com/pchuri/confluence-cli/pull/83#issuecomment-4108336611](https://github.com//github.com/pchuri/confluence-cli/pull/83/issues/issuecomment-4108336611)
+
+## [1.27.4](https://github.com/pchuri/confluence-cli/compare/v1.27.3...v1.27.4) (2026-03-19)
+
+
+### Bug Fixes
+
+* preserve line breaks when converting HTML to markdown ([#79](https://github.com/pchuri/confluence-cli/issues/79)) ([c39f388](https://github.com/pchuri/confluence-cli/commit/c39f388d20da82846f06e27b322016688bcd6373))
+
+## [1.27.3](https://github.com/pchuri/confluence-cli/compare/v1.27.2...v1.27.3) (2026-03-14)
+
+
+### Bug Fixes
+
+* add read:confluence-content.summary to required scopes documentation ([#78](https://github.com/pchuri/confluence-cli/issues/78)) ([9f7b70a](https://github.com/pchuri/confluence-cli/commit/9f7b70a4ba9665f8024103c55516c41df9357b9b)), closes [#76](https://github.com/pchuri/confluence-cli/issues/76) [#76](https://github.com/pchuri/confluence-cli/issues/76)
+
+## [1.27.2](https://github.com/pchuri/confluence-cli/compare/v1.27.1...v1.27.2) (2026-03-13)
+
+
+### Bug Fixes
+
+* improve 401 error messages and document required scopes for scoped API tokens ([#77](https://github.com/pchuri/confluence-cli/issues/77)) ([e7e3e52](https://github.com/pchuri/confluence-cli/commit/e7e3e523d25413c1fe4e2a1dfccabfd4436476e5)), closes [#76](https://github.com/pchuri/confluence-cli/issues/76)
+
+## [1.27.1](https://github.com/pchuri/confluence-cli/compare/v1.27.0...v1.27.1) (2026-03-11)
+
+
+### Bug Fixes
+
+* restrict config file permissions to owner only ([#72](https://github.com/pchuri/confluence-cli/issues/72)) ([25ec54d](https://github.com/pchuri/confluence-cli/commit/25ec54d80a55b2eba45a7d6adab2e2ae60e3cd4f))
+
+# [1.27.0](https://github.com/pchuri/confluence-cli/compare/v1.26.0...v1.27.0) (2026-03-11)
+
+
+### Features
+
+* add read-only mode for safe AI agent usage ([#74](https://github.com/pchuri/confluence-cli/issues/74)) ([20de9de](https://github.com/pchuri/confluence-cli/commit/20de9de4ff96b4c8173ead62cc6bac88e07bcc6f)), closes [#73](https://github.com/pchuri/confluence-cli/issues/73)
+
+# [1.26.0](https://github.com/pchuri/confluence-cli/compare/v1.25.1...v1.26.0) (2026-03-09)
+
+
+### Features
+
+* add multiple configuration profiles support ([#70](https://github.com/pchuri/confluence-cli/issues/70)) ([f83d8bf](https://github.com/pchuri/confluence-cli/commit/f83d8bfa549ef8d9784989f186ec7e05eed007e8)), closes [#69](https://github.com/pchuri/confluence-cli/issues/69) [#69](https://github.com/pchuri/confluence-cli/issues/69)
+
+## [1.25.1](https://github.com/pchuri/confluence-cli/compare/v1.25.0...v1.25.1) (2026-03-05)
+
+
+### Bug Fixes
+
+* resolve CLI silently exiting when installed via npm/Homebrew ([#66](https://github.com/pchuri/confluence-cli/issues/66)) ([#67](https://github.com/pchuri/confluence-cli/issues/67)) ([e4f14a3](https://github.com/pchuri/confluence-cli/commit/e4f14a3fe39265d58e020da6ed7fb0c02fea1407))
+
+# [1.25.0](https://github.com/pchuri/confluence-cli/compare/v1.24.1...v1.25.0) (2026-03-04)
+
+
+### Features
+
+* add recursive export and --overwrite flag ([#58](https://github.com/pchuri/confluence-cli/issues/58)) ([00aa839](https://github.com/pchuri/confluence-cli/commit/00aa8396cc0edd83a872a6d1dec0a96fb4511dfc))
+
+## [1.24.1](https://github.com/pchuri/confluence-cli/compare/v1.24.0...v1.24.1) (2026-03-04)
+
+
+### Bug Fixes
+
+* move Homebrew formula update into CI/CD workflow ([#64](https://github.com/pchuri/confluence-cli/issues/64)) ([34b477b](https://github.com/pchuri/confluence-cli/commit/34b477be84596957a2f39900a5643cf45b9b46af))
+
+# [1.24.0](https://github.com/pchuri/confluence-cli/compare/v1.23.0...v1.24.0) (2026-03-04)
+
+
+### Features
+
+* add configurable protocol support (http/https) ([#62](https://github.com/pchuri/confluence-cli/issues/62)) ([37ad206](https://github.com/pchuri/confluence-cli/commit/37ad20645afa35b744e6195afdf0e5acdf01b822)), closes [#59](https://github.com/pchuri/confluence-cli/issues/59)
+
+# [1.23.0](https://github.com/pchuri/confluence-cli/compare/v1.22.0...v1.23.0) (2026-03-04)
+
+
+### Features
+
+* add Homebrew tap support ([#56](https://github.com/pchuri/confluence-cli/issues/56)) ([e7bfb38](https://github.com/pchuri/confluence-cli/commit/e7bfb38e1cbc2c63d878508c4623d6b46e2f47fe)), closes [#55](https://github.com/pchuri/confluence-cli/issues/55)
+
+# [1.22.0](https://github.com/pchuri/confluence-cli/compare/v1.21.1...v1.22.0) (2026-03-03)
+
+
+### Features
+
+* adds unescape for nordic alphabets ([#54](https://github.com/pchuri/confluence-cli/issues/54)) ([7f834dd](https://github.com/pchuri/confluence-cli/commit/7f834ddbe6190588ef28d6044a3f51b4d3a5eb2b))
+
+## [1.21.1](https://github.com/pchuri/confluence-cli/compare/v1.21.0...v1.21.1) (2026-03-03)
+
+
+### Bug Fixes
+
+* add required YAML frontmatter to SKILL.md ([#53](https://github.com/pchuri/confluence-cli/issues/53)) ([a427f90](https://github.com/pchuri/confluence-cli/commit/a427f90fc562264ec7f3c8cf98453c7d553a4810)), closes [#52](https://github.com/pchuri/confluence-cli/issues/52)
+
+# [1.21.0](https://github.com/pchuri/confluence-cli/compare/v1.20.0...v1.21.0) (2026-02-27)
+
+
+### Features
+
+* add AI skill documentation and install-skill command ([#47](https://github.com/pchuri/confluence-cli/issues/47)) ([487a12e](https://github.com/pchuri/confluence-cli/commit/487a12e4a8ae1b61ece26951f087a8728ced08d3)), closes [#46](https://github.com/pchuri/confluence-cli/issues/46)
+
+# [1.20.0](https://github.com/pchuri/confluence-cli/compare/v1.19.0...v1.20.0) (2026-02-26)
+
+
+### Features
+
+* add JSON output format to attachments command ([#45](https://github.com/pchuri/confluence-cli/issues/45)) ([b512ffb](https://github.com/pchuri/confluence-cli/commit/b512ffbea6cd083879f5030c10db72cef32302c2)), closes [#44](https://github.com/pchuri/confluence-cli/issues/44)
+
+# [1.19.0](https://github.com/pchuri/confluence-cli/compare/v1.18.0...v1.19.0) (2026-02-20)
+
+
+### Features
+
+* add --cql flag to search command for raw CQL queries ([#40](https://github.com/pchuri/confluence-cli/issues/40)) ([311f5a9](https://github.com/pchuri/confluence-cli/commit/311f5a98bfd175c6b7902c55b4dd0687b2a0d8c0)), closes [#39](https://github.com/pchuri/confluence-cli/issues/39)
+
+# [1.18.0](https://github.com/pchuri/confluence-cli/compare/v1.17.0...v1.18.0) (2026-02-15)
+
+
+### Features
+
+* add content property commands (list, get, set, delete) ([#38](https://github.com/pchuri/confluence-cli/issues/38)) ([506515d](https://github.com/pchuri/confluence-cli/commit/506515dd0c271e5385ede3a49225d4b4707f225d)), closes [#37](https://github.com/pchuri/confluence-cli/issues/37)
+
+# [1.17.0](https://github.com/pchuri/confluence-cli/compare/v1.16.0...v1.17.0) (2026-02-13)
+
+
+### Features
+
+* add attachment upload and delete commands ([#36](https://github.com/pchuri/confluence-cli/issues/36)) ([ed62bb4](https://github.com/pchuri/confluence-cli/commit/ed62bb45468566c128f066016615048e31ed1775))
+
+# [1.16.0](https://github.com/pchuri/confluence-cli/compare/v1.15.1...v1.16.0) (2026-02-13)
+
+
+### Features
+
+* Add move command to relocate pages ([#32](https://github.com/pchuri/confluence-cli/issues/32)) ([a37f9b8](https://github.com/pchuri/confluence-cli/commit/a37f9b83174ef08a6517fe279dcce1b39fc1fb1a))
+
 ## [1.15.1](https://github.com/pchuri/confluence-cli/compare/v1.15.0...v1.15.1) (2026-02-12)
 
 

@@ -1,0 +1,1574 @@
+const MacroConverter = require('../lib/macro-converter');
+
+describe('MacroConverter', () => {
+  describe('linkStyle defaulting', () => {
+    test('defaults to "smart" when isCloud is true and no linkStyle is passed', () => {
+      const converter = new MacroConverter({ isCloud: true });
+      expect(converter.linkStyle).toBe('smart');
+    });
+
+    test('defaults to "plain" when isCloud is false and no linkStyle is passed', () => {
+      const converter = new MacroConverter({ isCloud: false });
+      expect(converter.linkStyle).toBe('plain');
+    });
+
+    test('explicit "smart" is used even when isCloud is false', () => {
+      const converter = new MacroConverter({ isCloud: false, linkStyle: 'smart' });
+      expect(converter.linkStyle).toBe('smart');
+    });
+
+    test('explicit "plain" is used regardless of isCloud', () => {
+      const cloudConverter = new MacroConverter({ isCloud: true, linkStyle: 'plain' });
+      const serverConverter = new MacroConverter({ isCloud: false, linkStyle: 'plain' });
+      expect(cloudConverter.linkStyle).toBe('plain');
+      expect(serverConverter.linkStyle).toBe('plain');
+    });
+
+    test('invalid linkStyle silently falls back to the isCloud-based default', () => {
+      // Config-level validation is the user-facing guardrail; the converter is
+      // lenient so direct library consumers cannot break the pipeline.
+      const cloudConverter = new MacroConverter({ isCloud: true, linkStyle: 'garbage' });
+      const serverConverter = new MacroConverter({ isCloud: false, linkStyle: 'garbage' });
+      expect(cloudConverter.linkStyle).toBe('smart');
+      expect(serverConverter.linkStyle).toBe('plain');
+    });
+  });
+
+  describe('link conversion by linkStyle', () => {
+    const markdown = '[Example](https://example.com)';
+
+    test('"smart" emits a smart link with data-card-appearance="inline"', () => {
+      const converter = new MacroConverter({ isCloud: true, linkStyle: 'smart' });
+      const result = converter.markdownToStorage(markdown);
+      expect(result).toContain('<a href="https://example.com" data-card-appearance="inline">Example</a>');
+      expect(result).not.toContain('<ac:link>');
+    });
+
+    test('"plain" emits an unadorned <a href> tag', () => {
+      const converter = new MacroConverter({ isCloud: true, linkStyle: 'plain' });
+      const result = converter.markdownToStorage(markdown);
+      expect(result).toContain('<a href="https://example.com">Example</a>');
+      expect(result).not.toContain('data-card-appearance');
+      expect(result).not.toContain('<ac:link>');
+    });
+
+    test('explicit legacy "wiki" emits the ac:link + ri:url storage macro', () => {
+      const converter = new MacroConverter({ isCloud: false, linkStyle: 'wiki' });
+      const result = converter.markdownToStorage(markdown);
+      expect(result).toContain('<ac:link>');
+      expect(result).toContain('ri:value="https://example.com"');
+      expect(result).toContain('<![CDATA[Example]]>');
+      expect(result).not.toContain('data-card-appearance');
+    });
+
+    test('Server/DC default emits a standard anchor for external Markdown links', () => {
+      const converter = new MacroConverter({ isCloud: false });
+      const result = converter.markdownToStorage('**My external link:** [My Link Text](https://test.com)');
+      expect(result).toBe('<p><strong>My external link:</strong> <a href="https://test.com">My Link Text</a></p>\n');
+      expect(result).not.toContain('<ac:link>');
+    });
+  });
+
+  describe('VALID_LINK_STYLES', () => {
+    test('is exported alongside the class', () => {
+      expect(MacroConverter.VALID_LINK_STYLES).toEqual(['smart', 'plain', 'wiki']);
+    });
+  });
+});
+
+describe('MacroConverter markdownToStorage marker conventions', () => {
+  // isCloud: true so link output matches the smart-link branch in mixed tests.
+  const converter = new MacroConverter({ isCloud: true });
+
+  describe('TOC', () => {
+    test('**TOC** becomes Table of Contents macro', () => {
+      const result = converter.markdownToStorage('**TOC**');
+      expect(result).toContain('<ac:structured-macro ac:name="toc" ac:schema-version="1" />');
+      expect(result).not.toContain('**TOC**');
+    });
+
+    test('[[_TOC_]] becomes Table of Contents macro', () => {
+      const result = converter.markdownToStorage('[[_TOC_]]');
+      expect(result).toContain('<ac:structured-macro ac:name="toc" ac:schema-version="1" />');
+      expect(result).not.toContain('[[_TOC_]]');
+    });
+
+    test('HTML comment TOC placeholders become Table of Contents macro', () => {
+      expect(converter.markdownToStorage('<!-- _TOC_ -->'))
+        .toContain('<ac:structured-macro ac:name="toc" ac:schema-version="1" />');
+      expect(converter.markdownToStorage('<!-- [[_TOC_]] -->'))
+        .toContain('<ac:structured-macro ac:name="toc" ac:schema-version="1" />');
+    });
+  });
+
+  describe('LISTING', () => {
+    test('[[_LISTING_]] becomes Children Display macro', () => {
+      const result = converter.markdownToStorage('[[_LISTING_]]');
+      expect(result).toContain('<ac:structured-macro ac:name="children" ac:schema-version="2" />');
+      expect(result).not.toContain('[[_LISTING_]]');
+    });
+
+    test('HTML comment LISTING placeholders become Children Display macro', () => {
+      expect(converter.markdownToStorage('<!-- _LISTING_ -->'))
+        .toContain('<ac:structured-macro ac:name="children" ac:schema-version="2" />');
+      expect(converter.markdownToStorage('<!-- [[_LISTING_]] -->'))
+        .toContain('<ac:structured-macro ac:name="children" ac:schema-version="2" />');
+    });
+
+    test('macro placeholders inside code stay literal', () => {
+      const inline = converter.markdownToStorage('`[[_TOC_]]`');
+      const fenced = converter.markdownToStorage('```\n<!-- _LISTING_ -->\n```');
+
+      expect(inline).toContain('<code>[[_TOC_]]</code>');
+      expect(inline).not.toContain('ac:name="toc"');
+      expect(fenced).toContain('<!-- _LISTING_ -->');
+      expect(fenced).not.toContain('ac:name="children"');
+    });
+
+    test('macro placeholders inside prose do not become macros', () => {
+      const toc = converter.markdownToStorage('Use [[_TOC_]] as a marker.');
+      const listing = converter.markdownToStorage('Keep <!-- _LISTING_ --> in prose.');
+
+      expect(toc).toContain('<em>TOC</em>');
+      expect(toc).not.toContain('ac:name="toc"');
+      expect(listing).toContain('<em>LISTING</em>');
+      expect(listing).not.toContain('ac:name="children"');
+    });
+  });
+
+  describe('ANCHOR', () => {
+    test('**ANCHOR: id** becomes anchor macro with given id', () => {
+      const result = converter.markdownToStorage('**ANCHOR: my-section**');
+      expect(result).toContain('<ac:structured-macro ac:name="anchor">');
+      expect(result).toContain('<ac:parameter ac:name="">my-section</ac:parameter>');
+      expect(result).not.toContain('**ANCHOR');
+    });
+  });
+
+  describe('EXPAND', () => {
+    test('**EXPAND: title** / **EXPAND_END** wraps content in an expand macro', () => {
+      const markdown = '**EXPAND: Show details**\n\nHidden content here.\n\n**EXPAND_END**';
+      const result = converter.markdownToStorage(markdown);
+      expect(result).toContain('<ac:structured-macro ac:name="expand">');
+      expect(result).toContain('<ac:parameter ac:name="title">Show details</ac:parameter>');
+      expect(result).toContain('<ac:rich-text-body>');
+      expect(result).toContain('Hidden content here.');
+      expect(result).not.toContain('**EXPAND');
+    });
+
+    test('inline italic in title is stripped (would otherwise be silently truncated by Confluence)', () => {
+      const result = converter.markdownToStorage('**EXPAND: foo *bar* baz**\n\nbody\n\n**EXPAND_END**');
+      expect(result).toContain('<ac:parameter ac:name="title">foo bar baz</ac:parameter>');
+      expect(result).not.toContain('<em>');
+    });
+
+    test('inline code span in title is stripped', () => {
+      const result = converter.markdownToStorage('**EXPAND: use `getUser()` here**\n\nbody\n\n**EXPAND_END**');
+      expect(result).toContain('<ac:parameter ac:name="title">use getUser() here</ac:parameter>');
+      expect(result).not.toContain('<code>');
+    });
+
+    test('inline link in title is stripped (URL is dropped — macro titles cannot hold links)', () => {
+      const result = converter.markdownToStorage('**EXPAND: see [docs](https://example.com)**\n\nbody\n\n**EXPAND_END**');
+      expect(result).toContain('<ac:parameter ac:name="title">see docs</ac:parameter>');
+      expect(result).not.toContain('<a ');
+      expect(result).not.toContain('data-card-appearance');
+    });
+
+    test('inline strikethrough in title is stripped (would otherwise cause Confluence to reject the page with HTTP 500)', () => {
+      const result = converter.markdownToStorage('**EXPAND: ~~old~~ new**\n\nbody\n\n**EXPAND_END**');
+      expect(result).toContain('<ac:parameter ac:name="title">old new</ac:parameter>');
+      expect(result).not.toContain('<s>');
+    });
+
+    test('XML entities in title are preserved (the fix only strips literal tags)', () => {
+      const result = converter.markdownToStorage('**EXPAND: A & B**\n\nbody\n\n**EXPAND_END**');
+      expect(result).toContain('<ac:parameter ac:name="title">A &amp; B</ac:parameter>');
+    });
+
+    test('multiple EXPAND blocks in one document each get their own macro', () => {
+      const markdown = [
+        '**EXPAND: First**',
+        '',
+        'one',
+        '',
+        '**EXPAND_END**',
+        '',
+        '**EXPAND: Second**',
+        '',
+        'two',
+        '',
+        '**EXPAND_END**'
+      ].join('\n');
+      const result = converter.markdownToStorage(markdown);
+      const matches = result.match(/<ac:structured-macro ac:name="expand">/g) || [];
+      expect(matches).toHaveLength(2);
+      expect(result).toContain('<ac:parameter ac:name="title">First</ac:parameter>');
+      expect(result).toContain('<ac:parameter ac:name="title">Second</ac:parameter>');
+    });
+  });
+
+  describe('same-page anchor links', () => {
+    test('[text](#id) becomes ac:link with ac:anchor', () => {
+      const result = converter.markdownToStorage('[Jump](#my-section)');
+      expect(result).toContain('<ac:link ac:anchor="my-section">');
+      expect(result).toContain('<![CDATA[Jump]]>');
+    });
+
+    test('anchor-link conversion runs before general link conversion on Cloud', () => {
+      const result = converter.markdownToStorage(
+        '[Jump](#my-section) and [External](https://example.com)'
+      );
+      expect(result).toContain('ac:anchor="my-section"');
+      expect(result).toContain('data-card-appearance="inline"');
+    });
+
+    test('anchor-link conversion runs before general link conversion on Server/DC', () => {
+      const serverConverter = new MacroConverter({ isCloud: false });
+      const result = serverConverter.markdownToStorage(
+        '[Jump](#my-section) and [External](https://example.com)'
+      );
+      expect(result).toContain('ac:anchor="my-section"');
+      expect(result).toContain('<a href="https://example.com">External</a>');
+      expect(result).not.toContain('ac:anchor="https');
+    });
+  });
+
+  describe('blockquote default', () => {
+    test('unmarked blockquote becomes a plain <blockquote> (not an info macro)', () => {
+      const result = converter.markdownToStorage('> Just a quote');
+      expect(result).toContain('<blockquote>');
+      expect(result).toContain('Just a quote');
+      expect(result).not.toContain('ac:name="info"');
+    });
+
+    test('multi-line unmarked blockquote stays plain', () => {
+      const result = converter.markdownToStorage('> first line\n> second line');
+      expect(result).toContain('<blockquote>');
+      expect(result).toContain('first line');
+      expect(result).toContain('second line');
+      expect(result).not.toContain('ac:structured-macro');
+    });
+
+    test('> **INFO** marker still produces an info macro', () => {
+      const result = converter.markdownToStorage('> **INFO**\n> Heads up.');
+      expect(result).toContain('<ac:structured-macro ac:name="info">');
+      expect(result).toContain('Heads up.');
+    });
+
+    test('> **WARNING** marker still produces a warning macro', () => {
+      const result = converter.markdownToStorage('> **WARNING**\n> Be careful.');
+      expect(result).toContain('<ac:structured-macro ac:name="warning">');
+      expect(result).toContain('Be careful.');
+    });
+
+    test('> **NOTE** marker still produces a note macro', () => {
+      const result = converter.markdownToStorage('> **NOTE**\n> Side note.');
+      expect(result).toContain('<ac:structured-macro ac:name="note">');
+      expect(result).toContain('Side note.');
+    });
+  });
+
+  describe('nested blockquote balanced parsing', () => {
+    test('nested blockquote with INFO marker on inner level keeps outer balanced', () => {
+      const result = converter.markdownToStorage('> > **INFO**\n> > body');
+      // outer blockquote wraps the inner info macro; nothing dangles outside
+      expect(result).toMatch(/<blockquote>[\s\S]*<ac:structured-macro ac:name="info">[\s\S]*<\/ac:structured-macro>[\s\S]*<\/blockquote>/);
+      expect(result).not.toMatch(/<\/ac:structured-macro>\s*<\/blockquote>\s*<\/blockquote>/);
+    });
+
+    test('plain nested blockquote without any marker preserves both levels', () => {
+      const result = converter.markdownToStorage('> > nested quote');
+      expect(result).toMatch(/<blockquote>\s*<blockquote>[\s\S]*<\/blockquote>\s*<\/blockquote>/);
+      expect(result).not.toContain('ac:structured-macro');
+    });
+
+    test('INFO marker on outer with plain nested blockquote inside body', () => {
+      const result = converter.markdownToStorage('> **INFO**\n>\n> > nested inside info');
+      // info macro contains the inner plain blockquote — no stray outer </blockquote> outside the macro
+      expect(result).toMatch(/<ac:structured-macro ac:name="info">[\s\S]*<blockquote>[\s\S]*<\/blockquote>[\s\S]*<\/ac:structured-macro>/);
+      const macroEnd = result.indexOf('</ac:structured-macro>');
+      expect(result.slice(macroEnd)).not.toContain('</blockquote>');
+    });
+
+    test('three-level nesting with INFO marker at deepest level keeps both outer levels balanced', () => {
+      const result = converter.markdownToStorage('> > > **INFO**\n> > > body');
+      // two outer blockquotes wrap the innermost info macro
+      expect(result).toMatch(
+        /<blockquote>[\s\S]*<blockquote>[\s\S]*<ac:structured-macro ac:name="info">[\s\S]*<\/ac:structured-macro>[\s\S]*<\/blockquote>[\s\S]*<\/blockquote>/
+      );
+      // depth tracking past two: no inner close should leak past the outer pair
+      expect(result).not.toMatch(/<\/ac:structured-macro>\s*<\/blockquote>\s*<\/blockquote>\s*<\/blockquote>/);
+    });
+
+    test('two sibling top-level blockquotes with different markers each become their own macro', () => {
+      const result = converter.markdownToStorage('> **INFO**\n> info body\n\n> **WARNING**\n> warning body');
+      // both macros are emitted as siblings; the walker advances past the first match cleanly
+      expect(result).toMatch(
+        /<ac:structured-macro ac:name="info">[\s\S]*<\/ac:structured-macro>[\s\S]*<ac:structured-macro ac:name="warning">[\s\S]*<\/ac:structured-macro>/
+      );
+      // neither sibling leaks a plain <blockquote> wrapper
+      expect(result).not.toContain('<blockquote>');
+    });
+  });
+
+  describe('admonition preprocessor respects markdown context', () => {
+    // The previous raw-text preprocessor would transform any `[!info]`
+    // anywhere in the source — including inside fenced code blocks, inline
+    // code, and heading text — and break the surrounding markdown. Inline
+    // code and fenced code are now stashed before rewriting, and the
+    // admonition pattern is anchored to a line start so it cannot match
+    // mid-paragraph or after a `>` blockquote prefix.
+    test('[!info] inside inline code is left intact', () => {
+      const result = converter.markdownToStorage('use the `[!info]` marker for callouts');
+      expect(result).toContain('<code>[!info]</code>');
+      expect(result).not.toContain('ac:name="info"');
+    });
+
+    test('[!info] inside a heading\'s inline code is left intact', () => {
+      const result = converter.markdownToStorage('## 5. `[!info]` round-trip marker');
+      expect(result).toContain('<h2>');
+      expect(result).toContain('<code>[!info]</code>');
+      expect(result).not.toContain('ac:name="info"');
+    });
+
+    test('[!info] inside a fenced code block is left intact', () => {
+      const result = converter.markdownToStorage('```\n[!info]\nbody\n```');
+      expect(result).toContain('ac:name="code"');
+      expect(result).toContain('[!info]');
+      expect(result).not.toContain('ac:name="info"');
+    });
+
+    test('[!info] mentioned in heading text stays a heading', () => {
+      const result = converter.markdownToStorage('## [!info] is a section title');
+      expect(result).toContain('<h2>');
+      expect(result).toContain('[!info]');
+      expect(result).not.toContain('ac:name="info"');
+    });
+
+    test('[!info] mid-paragraph stays inline text', () => {
+      const result = converter.markdownToStorage('This text mentions [!info] in passing.');
+      expect(result).toContain('<p>');
+      expect(result).toContain('[!info]');
+      expect(result).not.toContain('ac:name="info"');
+    });
+
+    test('GitHub-style `> [!info]` defers to plain blockquote', () => {
+      const result = converter.markdownToStorage('> [!info]\n> body');
+      expect(result).toContain('<blockquote>');
+      expect(result).toContain('[!info]');
+      expect(result).not.toContain('ac:name="info"');
+    });
+
+    // Guard against the placeholder/restore step accidentally swallowing
+    // user-authored numbers. The stash uses Unicode private-use delimiters
+    // so the restore regex only matches the placeholder shape, never bare
+    // digits in prose, headings, or list markers.
+    test('plain digits in prose are preserved', () => {
+      const result = converter.markdownToStorage('Version 5 released. 1.0 milestone in 2026.');
+      expect(result).toContain('Version 5 released');
+      expect(result).toContain('1.0 milestone');
+      expect(result).toContain('2026');
+      expect(result).not.toContain('undefined');
+    });
+
+    test('digits in a heading next to inline code are preserved', () => {
+      const result = converter.markdownToStorage('## 5. `[!info]` round-trip marker');
+      expect(result).toContain('<h2>5.');
+      expect(result).toContain('<code>[!info]</code>');
+      expect(result).not.toContain('undefined');
+    });
+
+    test('ordered list markers and inline code coexist', () => {
+      const result = converter.markdownToStorage('1. first\n2. `code` item\n3. third');
+      expect(result).toContain('<ol>');
+      expect(result).toContain('first');
+      expect(result).toContain('<code>code</code> item');
+      expect(result).toContain('third');
+      expect(result).not.toContain('undefined');
+    });
+
+    test('[!info] inside a tilde-fenced code block is left intact', () => {
+      const result = converter.markdownToStorage('~~~\n[!info]\nbody\n~~~');
+      expect(result).toContain('ac:name="code"');
+      expect(result).toContain('[!info]');
+      expect(result).not.toContain('ac:name="info"');
+    });
+
+    test('[!warning] at line start becomes a warning macro', () => {
+      const result = converter.markdownToStorage('[!warning]\nheads up');
+      expect(result).toContain('ac:name="warning"');
+      expect(result).toContain('heads up');
+    });
+
+    test('[!note] at line start becomes a note macro', () => {
+      const result = converter.markdownToStorage('[!note]\nside note');
+      expect(result).toContain('ac:name="note"');
+      expect(result).toContain('side note');
+    });
+  });
+
+  describe('marker text is stripped from macro body', () => {
+    // README's recommended form: `> **INFO**\n> body` (no blank `>` line).
+    // markdown-it parses this as a single paragraph, which the original
+    // cleanup regex did not handle — leaking `<strong>INFO</strong>` into
+    // the rendered macro body. These tests guard the README-documented form.
+    test('INFO marker is stripped (single-paragraph form)', () => {
+      const result = converter.markdownToStorage('> **INFO**\n> body line');
+      expect(result).toContain('ac:name="info"');
+      expect(result).toContain('body line');
+      expect(result).not.toContain('<strong>INFO</strong>');
+    });
+
+    test('INFO marker is stripped (paragraph-separated form)', () => {
+      const result = converter.markdownToStorage('> **INFO**\n>\n> body line');
+      expect(result).toContain('ac:name="info"');
+      expect(result).toContain('body line');
+      expect(result).not.toContain('<strong>INFO</strong>');
+    });
+
+    test('WARNING marker is stripped (single-paragraph form)', () => {
+      const result = converter.markdownToStorage('> **WARNING**\n> body line');
+      expect(result).toContain('ac:name="warning"');
+      expect(result).toContain('body line');
+      expect(result).not.toContain('<strong>WARNING</strong>');
+    });
+
+    test('WARNING marker is stripped (paragraph-separated form)', () => {
+      const result = converter.markdownToStorage('> **WARNING**\n>\n> body line');
+      expect(result).toContain('ac:name="warning"');
+      expect(result).toContain('body line');
+      expect(result).not.toContain('<strong>WARNING</strong>');
+    });
+
+    test('NOTE marker is stripped (single-paragraph form)', () => {
+      const result = converter.markdownToStorage('> **NOTE**\n> body line');
+      expect(result).toContain('ac:name="note"');
+      expect(result).toContain('body line');
+      expect(result).not.toContain('<strong>NOTE</strong>');
+    });
+
+    test('NOTE marker is stripped (paragraph-separated form)', () => {
+      const result = converter.markdownToStorage('> **NOTE**\n>\n> body line');
+      expect(result).toContain('ac:name="note"');
+      expect(result).toContain('body line');
+      expect(result).not.toContain('<strong>NOTE</strong>');
+    });
+
+    // The pre-processor expands `[!info]\nbody` → `> **INFO**\n> body`
+    // (single-paragraph form), so the round-trip path hits the same bug as
+    // the README form. Guard that round-trip here.
+    test('[!info] round-trip strips the marker', () => {
+      const result = converter.markdownToStorage('[!info]\nbody line');
+      expect(result).toContain('ac:name="info"');
+      expect(result).toContain('body line');
+      expect(result).not.toContain('<strong>INFO</strong>');
+    });
+
+    test('[!warning] round-trip strips the marker', () => {
+      const result = converter.markdownToStorage('[!warning]\nbody line');
+      expect(result).toContain('ac:name="warning"');
+      expect(result).toContain('body line');
+      expect(result).not.toContain('<strong>WARNING</strong>');
+    });
+
+    test('[!note] round-trip strips the marker', () => {
+      const result = converter.markdownToStorage('[!note]\nbody line');
+      expect(result).toContain('ac:name="note"');
+      expect(result).toContain('body line');
+      expect(result).not.toContain('<strong>NOTE</strong>');
+    });
+
+    // Negative cases: a quotation that merely *mentions* `**INFO**` (or any
+    // marker keyword) as part of prose must stay a plain blockquote — the
+    // marker is only honored when it sits at the very start of the first
+    // paragraph, immediately followed by `</p>` or `\n`. Both detection and
+    // stripping use this same anchor, so prose `**INFO**` survives untouched.
+    test('mid-sentence **INFO** stays a plain blockquote (no false-positive macro)', () => {
+      const result = converter.markdownToStorage('> Use **INFO** at the start of a callout.');
+      expect(result).toContain('<blockquote>');
+      expect(result).not.toContain('ac:name="info"');
+      expect(result).toContain('<strong>INFO</strong>');
+    });
+
+    test('**INFO** followed by trailing same-line text stays a plain blockquote', () => {
+      const result = converter.markdownToStorage('> **INFO** is an acronym\n> for Information.');
+      expect(result).toContain('<blockquote>');
+      expect(result).not.toContain('ac:name="info"');
+      expect(result).toContain('<strong>INFO</strong>');
+      expect(result).toContain('is an acronym');
+    });
+
+    test('**INFO** as the second word stays a plain blockquote', () => {
+      const result = converter.markdownToStorage('> Some **INFO** text here\n> next line.');
+      expect(result).toContain('<blockquote>');
+      expect(result).not.toContain('ac:name="info"');
+      expect(result).toContain('<strong>INFO</strong>');
+    });
+  });
+
+});
+
+describe('MacroConverter storageToMarkdown EXPAND round-trip', () => {
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('titled expand macro converts back to **EXPAND: title** / **EXPAND_END** markers', () => {
+    const storage = '<ac:structured-macro ac:name="expand" ac:schema-version="1" ac:macro-id="abc-123"><ac:parameter ac:name="title">My title</ac:parameter><ac:rich-text-body><p>body content</p></ac:rich-text-body></ac:structured-macro>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('**EXPAND: My title**');
+    expect(result).toContain('body content');
+    expect(result).toContain('**EXPAND_END**');
+    expect(result).not.toContain('<details>');
+  });
+
+  test('title-less expand macro still falls back to <details>/<summary> (preserves existing UI-created behavior)', () => {
+    const storage = '<ac:structured-macro ac:name="expand" ac:schema-version="1"><ac:rich-text-body><p>untitled body</p></ac:rich-text-body></ac:structured-macro>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('<details>');
+    expect(result).toContain('<summary>');
+    expect(result).toContain('untitled body');
+    expect(result).not.toContain('**EXPAND:');
+  });
+
+  test('full round-trip: markdown → storage → markdown preserves title and body', () => {
+    const original = '**EXPAND: Show details**\n\nHidden content here.\n\n**EXPAND_END**';
+    const storage = converter.markdownToStorage(original);
+    const back = converter.storageToMarkdown(storage);
+    expect(back).toContain('**EXPAND: Show details**');
+    expect(back).toContain('Hidden content here.');
+    expect(back).toContain('**EXPAND_END**');
+  });
+});
+
+describe('MacroConverter storageToMarkdown callout round-trip', () => {
+  // Storage → markdown emits the `> **MARKER**` blockquote form (matching
+  // README) rather than the bare `[!marker]` shorthand, because the bare form
+  // has no body terminator — a blank line inside a multi-paragraph body is
+  // indistinguishable from the body ending, so re-uploading the bare form
+  // silently drops every paragraph after the first. The blockquote form's
+  // `>` prefix gives the body an explicit boundary.
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('info macro emits the > **INFO** blockquote form', () => {
+    const storage = '<ac:structured-macro ac:name="info"><ac:rich-text-body><p>heads up</p></ac:rich-text-body></ac:structured-macro>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('> **INFO**');
+    expect(result).toContain('> heads up');
+    expect(result).not.toMatch(/^\[!info\]/m);
+  });
+
+  test('warning macro emits the > **WARNING** blockquote form', () => {
+    const storage = '<ac:structured-macro ac:name="warning"><ac:rich-text-body><p>be careful</p></ac:rich-text-body></ac:structured-macro>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('> **WARNING**');
+    expect(result).toContain('> be careful');
+    expect(result).not.toMatch(/^\[!warning\]/m);
+  });
+
+  test('note macro emits the > **NOTE** blockquote form', () => {
+    const storage = '<ac:structured-macro ac:name="note"><ac:rich-text-body><p>side note</p></ac:rich-text-body></ac:structured-macro>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('> **NOTE**');
+    expect(result).toContain('> side note');
+    expect(result).not.toMatch(/^\[!note\]/m);
+  });
+
+  test('multi-paragraph body separates paragraphs with `>` (issue #135)', () => {
+    // Regression guard for the round-trip body-bounds bug: a blank line
+    // between paragraphs must round-trip as a `>` line, not a bare blank
+    // line, so re-upload preserves both paragraphs inside the macro.
+    const storage = '<ac:structured-macro ac:name="info"><ac:rich-text-body><p>foo</p><p>bar</p></ac:rich-text-body></ac:structured-macro>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('> **INFO**\n> foo\n>\n> bar');
+  });
+
+  test('full round-trip preserves multi-paragraph body inside the macro (issue #135)', () => {
+    const original = '> **INFO**\n> foo\n>\n> bar';
+    const storage1 = converter.markdownToStorage(original);
+    const downloaded = converter.storageToMarkdown(storage1);
+    const storage2 = converter.markdownToStorage(downloaded);
+    // Both paragraphs must remain inside the rich-text-body after re-upload.
+    // Previously, the second paragraph escaped the macro because the bare
+    // `[!info]` output form had ambiguous body bounds.
+    expect(storage2).toMatch(/<ac:rich-text-body>[\s\S]*<p>foo<\/p>[\s\S]*<p>bar<\/p>[\s\S]*<\/ac:rich-text-body>/);
+    expect(storage2).not.toMatch(/<\/ac:structured-macro>\s*<p>bar<\/p>/);
+  });
+
+  test('full round-trip preserves single-paragraph body', () => {
+    const original = '> **WARNING**\n> single line body';
+    const storage1 = converter.markdownToStorage(original);
+    const downloaded = converter.storageToMarkdown(storage1);
+    const storage2 = converter.markdownToStorage(downloaded);
+    expect(storage2).toContain('<ac:structured-macro ac:name="warning">');
+    expect(storage2).toContain('single line body');
+    expect(storage2).not.toContain('**WARNING**');
+  });
+
+  test('adjacent paragraphs stay outside the macro on round-trip', () => {
+    // Without leading + trailing `\n` around the emitted blockquote, an
+    // adjacent following paragraph lazy-continues into the blockquote body
+    // and lands inside the macro on re-upload. Markdown blockquotes have no
+    // closing delimiter — only a blank line ends them — so the separator
+    // newlines are load-bearing.
+    const storage = '<p>before content</p><ac:structured-macro ac:name="info"><ac:rich-text-body><p>foo</p><p>bar</p></ac:rich-text-body></ac:structured-macro><p>after content</p>';
+    const downloaded = converter.storageToMarkdown(storage);
+    const restored = converter.markdownToStorage(downloaded);
+    expect(restored).toMatch(/<p>foo<\/p>[\s\S]*<p>bar<\/p>[\s\S]*<\/ac:rich-text-body>/);
+    expect(restored).toMatch(/<\/ac:structured-macro>\s*<p>after content<\/p>/);
+    expect(restored).toMatch(/<p>before content<\/p>\s*<ac:structured-macro/);
+  });
+
+  test('downloaded markdown has blank-line separation around the callout', () => {
+    const storage = '<p>before</p><ac:structured-macro ac:name="info"><ac:rich-text-body><p>body</p></ac:rich-text-body></ac:structured-macro><p>after</p>';
+    const result = converter.storageToMarkdown(storage);
+    // Blank line between surrounding prose and the callout — same convention
+    // as `code` and `mermaid` macros (see confluence-client.test.js).
+    expect(result).toMatch(/before\n\n> \*\*INFO\*\*/);
+    expect(result).toMatch(/> body\n\nafter/);
+  });
+});
+
+describe('MacroConverter storageToMarkdown anchor round-trip', () => {
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('anchor macro converts back to **ANCHOR: id** marker', () => {
+    const storage = '<ac:structured-macro ac:name="anchor"><ac:parameter ac:name="">my-section</ac:parameter></ac:structured-macro>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('**ANCHOR: my-section**');
+  });
+
+  test('anchor macro with extra attributes (e.g. ac:macro-id) still converts', () => {
+    const storage = '<ac:structured-macro ac:name="anchor" ac:macro-id="abc-123"><ac:parameter ac:name="">section-2</ac:parameter></ac:structured-macro>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('**ANCHOR: section-2**');
+  });
+
+  test('ac:link with ac:anchor converts back to [text](#id)', () => {
+    const storage = '<ac:link ac:anchor="my-section"><ac:plain-text-link-body><![CDATA[Jump]]></ac:plain-text-link-body></ac:link>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('[Jump](#my-section)');
+  });
+
+  test('anchor link is not consumed by the generic <ac:link> catch-all', () => {
+    const storage = '<p><ac:link ac:anchor="x"><ac:plain-text-link-body><![CDATA[A]]></ac:plain-text-link-body></ac:link> and <ac:link><ri:url ri:value="https://example.com" /><ac:plain-text-link-body><![CDATA[Ext]]></ac:plain-text-link-body></ac:link></p>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('[A](#x)');
+    expect(result).toContain('[Ext](https://example.com)');
+  });
+
+  test('full round-trip: markdown → storage → markdown preserves anchor and link', () => {
+    const original = '**ANCHOR: section-a**\n\nSee [details](#section-a) below.';
+    const storage = converter.markdownToStorage(original);
+    const back = converter.storageToMarkdown(storage);
+    expect(back).toContain('**ANCHOR: section-a**');
+    expect(back).toContain('[details](#section-a)');
+  });
+});
+
+describe('MacroConverter storageToMarkdown nested macros (regex pipeline could not express these)', () => {
+  // The previous regex-based pipeline used non-greedy `[\s\S]*?` matchers
+  // that landed on the first closing tag they saw, so nesting any rich-text
+  // body macro inside another would mis-pair tags and silently drop content.
+  // The parser-based walker handles nesting via the parse tree itself.
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('triple-nested callouts (info > warning > note) preserve every level', () => {
+    const storage = [
+      '<ac:structured-macro ac:name="info"><ac:rich-text-body>',
+      '<p>outer</p>',
+      '<ac:structured-macro ac:name="warning"><ac:rich-text-body>',
+      '<p>middle</p>',
+      '<ac:structured-macro ac:name="note"><ac:rich-text-body>',
+      '<p>inner</p>',
+      '</ac:rich-text-body></ac:structured-macro>',
+      '</ac:rich-text-body></ac:structured-macro>',
+      '</ac:rich-text-body></ac:structured-macro>',
+    ].join('');
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('> **INFO**');
+    expect(result).toContain('outer');
+    expect(result).toContain('**WARNING**');
+    expect(result).toContain('middle');
+    expect(result).toContain('**NOTE**');
+    expect(result).toContain('inner');
+  });
+
+  test('expand inside an info macro preserves both wrappers and the body', () => {
+    const storage = [
+      '<ac:structured-macro ac:name="info"><ac:rich-text-body>',
+      '<p>heads up</p>',
+      '<ac:structured-macro ac:name="expand">',
+      '<ac:parameter ac:name="title">Show details</ac:parameter>',
+      '<ac:rich-text-body><p>hidden body</p></ac:rich-text-body>',
+      '</ac:structured-macro>',
+      '</ac:rich-text-body></ac:structured-macro>',
+    ].join('');
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('> **INFO**');
+    expect(result).toContain('heads up');
+    expect(result).toContain('**EXPAND: Show details**');
+    expect(result).toContain('hidden body');
+    expect(result).toContain('**EXPAND_END**');
+  });
+
+  test('panel inside an expand preserves both titles and the body', () => {
+    const storage = [
+      '<ac:structured-macro ac:name="expand">',
+      '<ac:parameter ac:name="title">Outer</ac:parameter>',
+      '<ac:rich-text-body>',
+      '<ac:structured-macro ac:name="panel">',
+      '<ac:parameter ac:name="title">Inner</ac:parameter>',
+      '<ac:rich-text-body><p>panel body</p></ac:rich-text-body>',
+      '</ac:structured-macro>',
+      '</ac:rich-text-body>',
+      '</ac:structured-macro>',
+    ].join('');
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('**EXPAND: Outer**');
+    expect(result).toContain('**Inner**');
+    expect(result).toContain('panel body');
+    expect(result).toContain('**EXPAND_END**');
+  });
+
+  test('macro with reordered attributes (ac:macro-id before ac:name) is recognized', () => {
+    const storage = '<ac:structured-macro ac:macro-id="abc" ac:schema-version="1" ac:name="info"><ac:rich-text-body><p>body</p></ac:rich-text-body></ac:structured-macro>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('> **INFO**');
+    expect(result).toContain('body');
+  });
+});
+
+describe('MacroConverter storageToMarkdown depth guard', () => {
+  const { StorageDepthExceededError } = require('../lib/storage-walker');
+
+  test('throws StorageDepthExceededError on pathologically deep nesting rather than crashing the process', () => {
+    // Build a 1000-deep chain of <p> wrappers — well past the default cap of
+    // 256. A native stack overflow would abort any caller mid-export; a
+    // typed error lets the caller skip the page and continue.
+    const open = '<p>'.repeat(1000);
+    const close = '</p>'.repeat(1000);
+    const storage = `${open}content${close}`;
+    const converter = new MacroConverter({ isCloud: true });
+    expect(() => converter.storageToMarkdown(storage)).toThrow(StorageDepthExceededError);
+  });
+
+  test('within-limit nesting (50 levels) walks without error', () => {
+    // 50 levels comfortably exceeds the deepest realistic Confluence layout
+    // (a few layout sections + nested macros rarely top 30) but stays well
+    // under the 256 cap, so it must succeed.
+    const open = '<p>'.repeat(50);
+    const close = '</p>'.repeat(50);
+    const storage = `${open}content${close}`;
+    const converter = new MacroConverter({ isCloud: true });
+    expect(() => converter.storageToMarkdown(storage)).not.toThrow();
+  });
+});
+
+describe('MacroConverter storageToMarkdown HTML named entity decoding', () => {
+  // htmlparser2 in xmlMode decodes only the five XML entities
+  // (&amp; &lt; &gt; &quot; &apos;). Confluence storage prose still ships
+  // HTML named entities (&nbsp;, &eacute;, &ndash;, …) and they must be
+  // decoded before reaching markdown — otherwise an exported page renders
+  // with literal `&nbsp;` strings to the user.
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('decodes &nbsp; to a (non-breaking) space', () => {
+    expect(converter.storageToMarkdown('<p>foo&nbsp;bar</p>')).toBe('foo bar');
+  });
+
+  test('decodes accented Latin named entities', () => {
+    expect(converter.storageToMarkdown('<p>caf&eacute; na&iuml;ve &ntilde;</p>'))
+      .toBe('café naïve ñ');
+  });
+
+  test('decodes typographic punctuation entities and normalizes the same subset the original ASCII-mapped', () => {
+    // Smart quotes, single quotes, and ellipsis are normalized to ASCII to
+    // preserve the original htmlToMarkdown final-pass behavior. Em-dash and
+    // en-dash stay as Unicode (the original mapped them to Unicode too).
+    expect(converter.storageToMarkdown('<p>&ldquo;hi&rdquo; &lsquo;a&rsquo; &mdash; &ndash; &hellip;</p>'))
+      .toBe('"hi" \'a\' — – ...');
+  });
+
+  test('literal Unicode codepoints already in source pass through untouched', () => {
+    // Earlier versions applied a blanket Unicode → ASCII pass that mangled
+    // pages where the author typed “…” or … directly. Only `&…;` entity
+    // sequences should be normalized; literal codepoints must survive.
+    expect(converter.storageToMarkdown('<p>“hi” ‘a’ …</p>'))
+      .toBe('“hi” ‘a’ …');
+  });
+
+  test('decodes numeric character references', () => {
+    expect(converter.storageToMarkdown('<p>&#65;&#66;&#67; &#x41;&#x42;</p>')).toBe('ABC AB');
+  });
+
+  test('decodes entities inside macro parameter text (titles, ids, keys)', () => {
+    // getTextContent reads parameter children; without decoding, an expand
+    // title containing &eacute; would export verbatim as `caf&eacute;`.
+    const expand = '<ac:structured-macro ac:name="expand"><ac:parameter ac:name="title">caf&eacute; details</ac:parameter><ac:rich-text-body><p>body</p></ac:rich-text-body></ac:structured-macro>';
+    expect(converter.storageToMarkdown(expand)).toContain('**EXPAND: café details**');
+
+    const anchor = '<ac:structured-macro ac:name="anchor"><ac:parameter ac:name="">id&#45;a</ac:parameter></ac:structured-macro>';
+    expect(converter.storageToMarkdown(anchor)).toContain('**ANCHOR: id-a**');
+  });
+
+  test('decodes entities inside ri:content-title and ri:filename attributes', () => {
+    // Attribute values bypass walkNode's text-node decode path; without an
+    // explicit decode at the read site, internal-link text would still leak
+    // the entity verbatim.
+    const link = '<ac:link><ri:page ri:content-title="caf&eacute; page" /></ac:link>';
+    expect(converter.storageToMarkdown(link)).toContain('[café page]');
+
+    const image = '<ac:image><ri:attachment ri:filename="r&eacute;sum&eacute;.png" /></ac:image>';
+    expect(converter.storageToMarkdown(image)).toContain('résumé.png');
+  });
+
+  test('decodes entities inside CDATA bodies (link bodies, code, mermaid)', () => {
+    // getRawText reads CDATA verbatim — without a decode pass at the
+    // boundary, link text and code blocks would leak the entity. Confluence
+    // sometimes encodes `<` / `>` inside `<ac:plain-text-body>` as
+    // `&lt;` / `&gt;` even though CDATA does not require it; the previous
+    // implementation's final htmlToMarkdown pass decoded these.
+    const link = '<ac:link><ri:url ri:value="https://x.com" /><ac:plain-text-link-body><![CDATA[caf&eacute;]]></ac:plain-text-link-body></ac:link>';
+    expect(converter.storageToMarkdown(link)).toContain('[café](https://x.com)');
+
+    const code = '<ac:structured-macro ac:name="code"><ac:parameter ac:name="language">html</ac:parameter><ac:plain-text-body><![CDATA[&lt;div&gt;]]></ac:plain-text-body></ac:structured-macro>';
+    expect(converter.storageToMarkdown(code)).toContain('<div>');
+  });
+
+  test('decodes entities inside ac:anchor and ri:value URL attributes', () => {
+    // ac:anchor gets used as a URL fragment, ri:value as the link target.
+    // Both still need named-entity decoding even though they look URL-y.
+    const anchorLink = '<ac:link ac:anchor="caf&eacute;"><ac:plain-text-link-body><![CDATA[Jump]]></ac:plain-text-link-body></ac:link>';
+    expect(converter.storageToMarkdown(anchorLink)).toContain('[Jump](#café)');
+
+    const urlLink = '<ac:link><ri:url ri:value="https://example.com?q=caf&eacute;" /><ac:plain-text-link-body><![CDATA[Ex]]></ac:plain-text-link-body></ac:link>';
+    expect(converter.storageToMarkdown(urlLink)).toContain('[Ex](https://example.com?q=café)');
+  });
+
+  test('decodes entities inside generic <a href> URLs', () => {
+    // The generic HTML link path also reads href directly. Less common in
+    // Confluence storage than ac:link, but still a parity gap if untouched.
+    const html = '<p><a href="https://example.com?q=caf&eacute;">Ex</a></p>';
+    expect(converter.storageToMarkdown(html)).toContain('[Ex](https://example.com?q=café)');
+  });
+});
+
+describe('MacroConverter storageToMarkdown ac:link without body', () => {
+  // The original regex pipeline dropped <ac:link> nodes that lacked an
+  // explicit text body — the catch-all swept them away. The walker must
+  // match that, otherwise malformed exports show visible `[](url)` /
+  // `[](#anchor)` markers instead of clean prose.
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('ac:link with ac:anchor but no plain-text-link-body is dropped (no empty marker)', () => {
+    const storage = '<p>Before</p><ac:link ac:anchor="section"><ri:page ri:content-title="Page" /></ac:link><p>After</p>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).not.toContain('[]');
+    expect(result).not.toContain('(#section)');
+    expect(result).toContain('Before');
+    expect(result).toContain('After');
+  });
+
+  test('ac:link with ri:url but no plain-text-link-body is dropped', () => {
+    const storage = '<p>Before</p><ac:link><ri:url ri:value="https://example.com" /></ac:link><p>After</p>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).not.toContain('[]');
+    expect(result).not.toContain('(https://example.com)');
+    expect(result).toContain('Before');
+    expect(result).toContain('After');
+  });
+});
+
+describe('MacroConverter storageToMarkdown ri:content-title escaping', () => {
+  // Page titles routinely contain `()` (e.g. "Release notes (v2.0)") and
+  // could in theory contain `[]` or `\`. Interpolating raw into markdown link
+  // syntax breaks downstream parsers and — for adversarially-crafted titles —
+  // allows a sibling link to be injected. Escape the four structural chars
+  // plus backslash at every site that splices a title into `[…](…)`.
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('ri:page title with parentheses is escaped in [title] form', () => {
+    const storage = '<ac:link><ri:page ri:content-title="Release notes (v2.0)" /></ac:link>';
+    expect(converter.storageToMarkdown(storage)).toContain('[Release notes \\(v2.0\\)]');
+  });
+
+  test('ri:page title with brackets is escaped in [title] form', () => {
+    const storage = '<ac:link><ri:page ri:content-title="Plan [Q4]" /></ac:link>';
+    expect(converter.storageToMarkdown(storage)).toContain('[Plan \\[Q4\\]]');
+  });
+
+  test('ri:page title with backslash is escaped in [title] form', () => {
+    const storage = '<ac:link><ri:page ri:content-title="path\\\\name" /></ac:link>';
+    expect(converter.storageToMarkdown(storage)).toContain('[path\\\\\\\\name]');
+  });
+
+  test('include-page macro escapes title in markdown link text but not in URL', () => {
+    const storage = '<ac:structured-macro ac:name="include"><ac:parameter ac:name=""><ac:link><ri:page ri:space-key="~user" ri:content-title="Notes (draft)" /></ac:link></ac:parameter></ac:structured-macro>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('[Notes \\(draft\\)]');
+    expect(result).toContain('Notes%20(draft)');
+  });
+
+  test('include-shared-block escapes pageTitle interpolated into prose', () => {
+    const storage = '<ac:structured-macro ac:name="include-shared-block"><ac:parameter ac:name="shared-block-key">B1</ac:parameter><ac:parameter ac:name="page"><ac:link><ri:page ri:content-title="Specs (v3)" /></ac:link></ac:parameter></ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toContain('Specs \\(v3\\)');
+  });
+
+  test('adversarial title cannot inject a sibling markdown link', () => {
+    const storage = '<ac:link><ri:page ri:content-title="evil) [pwn](http://attacker.com" /></ac:link>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).not.toMatch(/\]\(http:\/\/attacker\.com/);
+    expect(result).toContain('\\(');
+    expect(result).toContain('\\[');
+    expect(result).toContain('\\]');
+  });
+});
+
+describe('MacroConverter storageToMarkdown ac:image external URL', () => {
+  // <ac:image> wraps either <ri:attachment> (uploaded asset) or <ri:url>
+  // (external image). The walker originally only handled the attachment
+  // branch; external images were silently dropped from the export.
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('<ri:url> image renders with empty alt and the external URL', () => {
+    const storage = '<ac:image><ri:url ri:value="https://example.com/diagram.png" /></ac:image>';
+    expect(converter.storageToMarkdown(storage)).toBe('![](https://example.com/diagram.png)');
+  });
+
+  test('<ri:url> image decodes entities in the URL value', () => {
+    const storage = '<ac:image><ri:url ri:value="https://example.com/path?q=caf&eacute;" /></ac:image>';
+    expect(converter.storageToMarkdown(storage)).toBe('![](https://example.com/path?q=café)');
+  });
+
+  test('<ac:image> with neither ri:attachment nor ri:url emits nothing', () => {
+    const storage = '<p>Before</p><ac:image></ac:image><p>After</p>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).not.toContain('![]');
+    expect(result).toContain('Before');
+    expect(result).toContain('After');
+  });
+});
+
+describe('MacroConverter storageToMarkdown <s>/<del> strikethrough', () => {
+  // markdownToStorage enables markdown-it's strikethrough plugin, but the
+  // walker had no <s>/<del> handler — both fell through to the default
+  // branch and the wrapper was dropped, losing strikethrough on round-trip.
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('<s> renders as ~~text~~', () => {
+    const storage = '<p><s>old</s> new</p>';
+    expect(converter.storageToMarkdown(storage)).toBe('~~old~~ new');
+  });
+
+  test('<del> renders as ~~text~~ (HTML5 alias)', () => {
+    const storage = '<p><del>removed</del> kept</p>';
+    expect(converter.storageToMarkdown(storage)).toBe('~~removed~~ kept');
+  });
+
+  test('round-trip: ~~old~~ new survives markdown → storage → markdown', () => {
+    const storage = converter.markdownToStorage('~~old~~ new');
+    expect(converter.storageToMarkdown(storage)).toBe('~~old~~ new');
+  });
+});
+
+describe('MacroConverter <u>/<sub>/<sup>/<mark> passthrough', () => {
+  // Markdown has no native syntax for these inline tags, so the walker emits
+  // them as raw HTML and markdownToStorage stashes them around MarkdownIt's
+  // html: false escape so they round-trip end-to-end.
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('walker preserves <sub> in storage → markdown', () => {
+    expect(converter.storageToMarkdown('<p>H<sub>2</sub>O</p>')).toBe('H<sub>2</sub>O');
+  });
+
+  test('walker preserves <sup> in storage → markdown', () => {
+    expect(converter.storageToMarkdown('<p>x<sup>2</sup></p>')).toBe('x<sup>2</sup>');
+  });
+
+  test('walker preserves <u> in storage → markdown', () => {
+    expect(converter.storageToMarkdown('<p><u>under</u></p>')).toBe('<u>under</u>');
+  });
+
+  test('walker preserves <mark> in storage → markdown', () => {
+    expect(converter.storageToMarkdown('<p><mark>hi</mark></p>')).toBe('<mark>hi</mark>');
+  });
+
+  test('round-trip: H<sub>2</sub>O survives markdown → storage → markdown', () => {
+    const md = 'H<sub>2</sub>O';
+    expect(converter.storageToMarkdown(converter.markdownToStorage(md)).trim()).toBe(md);
+  });
+
+  test('round-trip: <mark>highlight</mark> survives markdown → storage → markdown', () => {
+    const md = '<mark>highlight</mark>';
+    expect(converter.storageToMarkdown(converter.markdownToStorage(md)).trim()).toBe(md);
+  });
+
+  test('round-trip: <u>under</u> survives markdown → storage → markdown', () => {
+    const md = '<u>under</u>';
+    expect(converter.storageToMarkdown(converter.markdownToStorage(md)).trim()).toBe(md);
+  });
+
+  test('round-trip: x<sup>2</sup> survives markdown → storage → markdown', () => {
+    const md = 'x<sup>2</sup>';
+    expect(converter.storageToMarkdown(converter.markdownToStorage(md)).trim()).toBe(md);
+  });
+
+  test('walker drops attributes on whitelisted tags (matches <details>/<summary> precedent)', () => {
+    // Asymmetric with markdown→storage which preserves attributes; documenting
+    // here so any future change is intentional rather than incidental.
+    expect(converter.storageToMarkdown('<p><sub class="chem">2</sub></p>')).toBe('<sub>2</sub>');
+  });
+
+  test('attributes on whitelisted tags pass through markdown → storage', () => {
+    const result = converter.markdownToStorage('<mark class="lit">x</mark>');
+    expect(result).toContain('<mark class="lit">x</mark>');
+  });
+
+  test('whitelist does not allow non-listed tags through (e.g., <script> is escaped)', () => {
+    const result = converter.markdownToStorage('<script>alert(1)</script>');
+    expect(result).not.toContain('<script>');
+    expect(result).toContain('&lt;script&gt;');
+  });
+
+  test('literal <u> inside inline code is escaped, not passed through', () => {
+    const result = converter.markdownToStorage('`<u>x</u>`');
+    expect(result).toContain('&lt;u&gt;x&lt;/u&gt;');
+    expect(result).not.toMatch(/<u>x<\/u>/);
+  });
+
+  test('literal <u> inside fenced code is preserved as code body, not passthrough', () => {
+    const result = converter.markdownToStorage('```\n<u>x</u>\n```');
+    // Fenced code becomes a code macro with the literal source as plain-text-body.
+    expect(result).toContain('<![CDATA[<u>x</u>]]>');
+  });
+
+  test('literal <u> inside 4-space indented code is preserved as code body', () => {
+    // Regression guard: an earlier draft pre-stashed <u> with a regex that
+    // ignored indented code blocks. The placeholder ended up inside the
+    // rendered <pre><code>, the restored raw <u> was re-parsed as a real tag,
+    // and convertCodeBlock's text-only collection silently emptied the body.
+    const result = converter.markdownToStorage('    <u>x</u>');
+    expect(result).toContain('<![CDATA[<u>x</u>]]>');
+    expect(result).not.toContain('<![CDATA[]]>');
+  });
+
+  test('list-item continuation aligned to 4 spaces is NOT treated as code', () => {
+    // Tokenizer-based detection must distinguish indented code blocks from
+    // list-item continuations that happen to align to four spaces; otherwise
+    // <u> in continuations would be wrongly stashed-and-escaped.
+    const result = converter.markdownToStorage('- item1\n    <u>x</u>');
+    expect(result).toContain('<u>x</u>');
+    expect(result).not.toContain('&lt;u&gt;');
+  });
+
+  test('quoted attribute containing > is preserved verbatim', () => {
+    // Regression guard: a `[^>]*` body in the whitelist regex stopped at the
+    // first `>` inside the quoted value, leaving an incomplete tag that
+    // collapsed to `<p></p>` and silently dropped the user content.
+    const result = converter.markdownToStorage('<mark title="1>0">x</mark>');
+    expect(result).toContain('<mark title="1>0">x</mark>');
+  });
+
+  test('single-quoted attribute is accepted (htmlToStorage normalizes to double-quote on output)', () => {
+    const result = converter.markdownToStorage('<mark class=\'lit\'>y</mark>');
+    expect(result).toContain('<mark class="lit">y</mark>');
+  });
+
+  test('angle-bracket autolinks are not mistaken for whitelisted tags', () => {
+    // Regression guard: a plain `\b` boundary after the tag name allowed
+    // markdown autolinks like `<u@example.com>` and `<sub:foo>` to be stashed
+    // as if they were HTML tags, bypassing markdown-it's linkify path and
+    // emitting bogus `<u@example.com></u@example.com>` pairs.
+    const email = converter.markdownToStorage('<u@example.com>');
+    expect(email).toContain('href="mailto:u@example.com"');
+    expect(email).not.toMatch(/<u@example\.com>/);
+
+    const uri = converter.markdownToStorage('<sub:foo>');
+    expect(uri).toContain('href="sub:foo"');
+    expect(uri).not.toMatch(/<sub:foo>/);
+  });
+
+  test('hyphenated custom-element-like names are NOT passed through (e.g., <u-foo>)', () => {
+    // Tightened from the original `\b` behaviour: a custom element whose name
+    // starts with `u`/`sub`/etc. is not really a `<u>` tag, so we let
+    // markdown-it escape it like any other HTML.
+    const result = converter.markdownToStorage('<u-foo>x</u-foo>');
+    expect(result).toContain('&lt;u-foo&gt;');
+    expect(result).not.toMatch(/<u-foo>/);
+  });
+
+  test('markdownToNativeStorage applies the same passthrough policy', () => {
+    const result = converter.markdownToNativeStorage('H<sub>2</sub>O');
+    expect(result).toContain('<sub>2</sub>');
+  });
+});
+
+describe('MacroConverter <br> passthrough', () => {
+  // `<br>` is the practical way to get a line break inside a table cell via
+  // markdown, since markdown table grammar allows only inline text per cell.
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('<br> in a table cell becomes self-closing storage XHTML instead of being escaped', () => {
+    const md = '| 버전 | 변경 |\n| --- | --- |\n| v1 | 가<br>나<br>다 |';
+    const result = converter.markdownToStorage(md);
+    expect(result).toContain('<td><p>가<br />나<br />다</p></td>');
+    expect(result).not.toContain('&lt;br&gt;');
+  });
+
+  test('<br/> and <br /> variants normalize to self-closing storage XHTML', () => {
+    const result = converter.markdownToStorage('a<br/>b and c<br />d');
+    expect(result).toContain('a<br />b and c<br />d');
+    expect(result).not.toContain('&lt;br');
+  });
+
+  test('markdown hard breaks normalize to self-closing storage XHTML', () => {
+    const markdown = [
+      '# Lines paragraph',
+      '**Test Line 1:** line 1  ',
+      '**Test Line 2:** `line 2`  ',
+      '**Test Line 3:** line 3'
+    ].join('\n');
+
+    const result = converter.markdownToStorage(markdown);
+
+    expect(result).toContain('<strong>Test Line 1:</strong> line 1<br />');
+    expect(result).toContain('<strong>Test Line 2:</strong> <code>line 2</code><br />');
+    expect(result).not.toContain('<br>');
+  });
+
+  test('literal <br> inside inline code stays escaped, not passed through', () => {
+    const result = converter.markdownToStorage('`<br>`');
+    expect(result).toContain('&lt;br&gt;');
+    expect(result).not.toMatch(/<br>/);
+  });
+});
+
+describe('MacroConverter passthrough tags in link/image title attributes', () => {
+  // Whitelisted inline tags (br|u|sub|sup|mark|details|summary) are stashed as
+  // placeholders before rendering and restored across the whole HTML string.
+  // When a placeholder lands inside an attribute value (a link/image `title`),
+  // restoring the raw tag would inject unescaped `<>"&` and produce storage XML
+  // that Confluence rejects. The restore step must XML-escape those, while
+  // leaving body-text passthrough byte-identical (see the <br> passthrough suite
+  // above, which must stay green).
+  const converter = new MacroConverter({ isCloud: true });
+
+  // Focused well-formedness check for this defect class: every attribute value
+  // must be free of raw `<`/`>`. htmlparser2 (xmlMode) is too lenient to flag
+  // these, so we scan attribute values directly.
+  const assertAttrsWellFormed = (xml) => {
+    const attrRe = /\b[\w:-]+\s*=\s*"([^"]*)"/g;
+    let m;
+    while ((m = attrRe.exec(xml)) !== null) {
+      expect(m[1]).not.toMatch(/[<>]/);
+    }
+  };
+
+  test('link title with <br> is XML-escaped, not restored raw', () => {
+    const result = converter.markdownToStorage('[x](https://example.com "<br>")');
+    expect(result).toContain('title="&lt;br&gt;"');
+    expect(result).not.toContain('title="<br>"');
+    assertAttrsWellFormed(result);
+  });
+
+  test('image title with <sub>...</sub> is XML-escaped, not restored raw', () => {
+    const result = converter.markdownToStorage('![img](https://example.com/i.png "cap<sub>x</sub>")');
+    expect(result).toContain('title="cap&lt;sub&gt;x&lt;/sub&gt;"');
+    expect(result).not.toContain('title="cap<sub>');
+    assertAttrsWellFormed(result);
+  });
+
+  test('same tag in body AND title: body stays raw XHTML, title gets escaped', () => {
+    const result = converter.markdownToStorage('Line a<br>b then [x](https://example.com "<br>")');
+    // body passthrough unchanged (self-closed by markdown/storage pipeline)
+    expect(result).toContain('a<br />b');
+    // attribute context escaped
+    expect(result).toContain('title="&lt;br&gt;"');
+    assertAttrsWellFormed(result);
+  });
+
+  test('all seven whitelisted tags in a title attribute are escaped', () => {
+    const tags = ['br', 'u', 'sub', 'sup', 'mark', 'details', 'summary'];
+    for (const tag of tags) {
+      const result = converter.markdownToStorage(`[x](https://example.com "a<${tag}>b")`);
+      expect(result).toContain(`title="a&lt;${tag}&gt;b"`);
+      assertAttrsWellFormed(result);
+    }
+  });
+
+  test('output with escaped title parses as well-formed XML', () => {
+    const htmlparser2 = require('htmlparser2');
+    const result = converter.markdownToStorage('![img](https://example.com/i.png "cap<sub>x</sub>") and text a<br>b');
+    let error = null;
+    const parser = new htmlparser2.Parser(
+      { onerror: (e) => { error = e; } },
+      { xmlMode: true, recognizeSelfClosing: true }
+    );
+    parser.write(`<root>${result}</root>`);
+    parser.end();
+    expect(error).toBeNull();
+    // xmlMode is lenient about attribute contents, so also assert no raw
+    // angle brackets survive inside any attribute value.
+    assertAttrsWellFormed(result);
+  });
+});
+
+describe('MacroConverter storageToMarkdown panel formatting', () => {
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('panel body does not produce extra `>` blank lines bracketing the content', () => {
+    const storage = '<ac:structured-macro ac:name="panel"><ac:parameter ac:name="title">T</ac:parameter><ac:rich-text-body><p>body</p></ac:rich-text-body></ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('> **T**\n>\n> body');
+  });
+
+  test('multi-paragraph panel body keeps inter-paragraph `>` separators', () => {
+    const storage = '<ac:structured-macro ac:name="panel"><ac:parameter ac:name="title">T</ac:parameter><ac:rich-text-body><p>foo</p><p>bar</p></ac:rich-text-body></ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('> **T**\n>\n> foo\n>\n> bar');
+  });
+});
+
+describe('MacroConverter storageToMarkdown empty/missing macro parameters', () => {
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('anchor with no ac:parameter is dropped entirely', () => {
+    const storage = '<ac:structured-macro ac:name="anchor"></ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('');
+  });
+
+  test('anchor with empty ac:parameter is dropped entirely', () => {
+    const storage = '<ac:structured-macro ac:name="anchor"><ac:parameter ac:name=""></ac:parameter></ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('');
+  });
+
+  test('anchor with whitespace-only id is dropped entirely', () => {
+    const storage = '<ac:structured-macro ac:name="anchor"><ac:parameter ac:name="">   </ac:parameter></ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('');
+  });
+
+  test('panel without title parameter emits body-only blockquote (no empty bold line)', () => {
+    const storage = '<ac:structured-macro ac:name="panel"><ac:rich-text-body><p>body</p></ac:rich-text-body></ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('> body');
+  });
+
+  test('panel with empty title parameter emits body-only blockquote', () => {
+    const storage = '<ac:structured-macro ac:name="panel"><ac:parameter ac:name="title"></ac:parameter><ac:rich-text-body><p>body</p></ac:rich-text-body></ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('> body');
+  });
+
+  test('panel with title but no body emits header-only blockquote', () => {
+    const storage = '<ac:structured-macro ac:name="panel"><ac:parameter ac:name="title">T</ac:parameter></ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('> **T**');
+  });
+
+  test('panel with neither title nor body is dropped entirely', () => {
+    const storage = '<ac:structured-macro ac:name="panel"></ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('');
+  });
+
+  test('expand with empty title parameter falls through to <details> block', () => {
+    const storage = '<ac:structured-macro ac:name="expand">'
+      + '<ac:parameter ac:name="title"></ac:parameter>'
+      + '<ac:rich-text-body><p>Body</p></ac:rich-text-body>'
+      + '</ac:structured-macro>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).not.toContain('**EXPAND:');
+    expect(result).toContain('<details>');
+    expect(result).toContain('<summary>Expand Details</summary>');
+    expect(result).toContain('Body');
+  });
+
+  test('expand with whitespace-only title parameter falls through to <details> block', () => {
+    const storage = '<ac:structured-macro ac:name="expand">'
+      + '<ac:parameter ac:name="title">   </ac:parameter>'
+      + '<ac:rich-text-body><p>Body</p></ac:rich-text-body>'
+      + '</ac:structured-macro>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).not.toContain('**EXPAND:');
+    expect(result).toContain('<details>');
+  });
+
+  test('shared-block with empty key emits header without colon suffix', () => {
+    const storage = '<ac:structured-macro ac:name="shared-block">'
+      + '<ac:parameter ac:name="shared-block-key"></ac:parameter>'
+      + '<ac:rich-text-body><p>Inside</p></ac:rich-text-body>'
+      + '</ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('> **Shared Block**\n>\n> Inside');
+  });
+
+  test('shared-block with whitespace-only key emits header without colon suffix', () => {
+    const storage = '<ac:structured-macro ac:name="shared-block">'
+      + '<ac:parameter ac:name="shared-block-key">   </ac:parameter>'
+      + '<ac:rich-text-body><p>Inside</p></ac:rich-text-body>'
+      + '</ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('> **Shared Block**\n>\n> Inside');
+  });
+
+  test('shared-block with neither key nor body is dropped entirely', () => {
+    const storage = '<ac:structured-macro ac:name="shared-block">'
+      + '<ac:parameter ac:name="shared-block-key"></ac:parameter>'
+      + '</ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('');
+  });
+
+  test('shared-block with key but no body emits header-only blockquote', () => {
+    const storage = '<ac:structured-macro ac:name="shared-block">'
+      + '<ac:parameter ac:name="shared-block-key">K</ac:parameter>'
+      + '</ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('> **Shared Block: K**');
+  });
+
+  test('include-shared-block with empty key drops the colon-key suffix before page note', () => {
+    const storage = '<ac:structured-macro ac:name="include-shared-block">'
+      + '<ac:parameter ac:name="shared-block-key"></ac:parameter>'
+      + '<ac:parameter ac:name="page">'
+      + '<ac:link><ri:page ri:content-title="SomePage"/></ac:link>'
+      + '</ac:parameter>'
+      + '</ac:structured-macro>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('**Include Shared Block** (from page: SomePage');
+    expect(result).not.toContain('**: ');
+  });
+
+  test('include-shared-block with key keeps the colon-key suffix', () => {
+    const storage = '<ac:structured-macro ac:name="include-shared-block">'
+      + '<ac:parameter ac:name="shared-block-key">K</ac:parameter>'
+      + '<ac:parameter ac:name="page">'
+      + '<ac:link><ri:page ri:content-title="SomePage"/></ac:link>'
+      + '</ac:parameter>'
+      + '</ac:structured-macro>';
+    const result = converter.storageToMarkdown(storage);
+    expect(result).toContain('**Include Shared Block**: K (from page: SomePage');
+  });
+});
+
+describe('MacroConverter storageToMarkdown fenced code preserves indentation', () => {
+  const converter = new MacroConverter({ isCloud: true });
+  const codeMacro = (lang, body) =>
+    `<ac:structured-macro ac:name="code"><ac:parameter ac:name="language">${lang}</ac:parameter><ac:plain-text-body><![CDATA[${body}]]></ac:plain-text-body></ac:structured-macro>`;
+
+  test('leading 4-space indent in fenced code is preserved', () => {
+    const storage = codeMacro('python', 'def foo():\n    return 1');
+    expect(converter.storageToMarkdown(storage)).toBe('```python\ndef foo():\n    return 1\n```');
+  });
+
+  test('nested 8-space indent in fenced code is preserved', () => {
+    const storage = codeMacro('python', 'def foo():\n    if x:\n        return 1');
+    expect(converter.storageToMarkdown(storage)).toBe('```python\ndef foo():\n    if x:\n        return 1\n```');
+  });
+
+  test('tab indent in fenced code is preserved', () => {
+    const storage = codeMacro('go', 'func f() {\n\treturn 1\n}');
+    expect(converter.storageToMarkdown(storage)).toBe('```go\nfunc f() {\n\treturn 1\n}\n```');
+  });
+
+  test('inline multi-space inside fenced code is preserved', () => {
+    const storage = codeMacro('text', 'a    b    c');
+    expect(converter.storageToMarkdown(storage)).toBe('```text\na    b    c\n```');
+  });
+
+  test('mermaid macro indent is preserved', () => {
+    const storage = '<ac:structured-macro ac:name="mermaid-macro"><ac:plain-text-body><![CDATA[graph TD\n    A --> B\n    A --> C]]></ac:plain-text-body></ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('```mermaid\ngraph TD\n    A --> B\n    A --> C\n```');
+  });
+
+  test('plantuml macro basic conversion', () => {
+    const storage = '<ac:structured-macro ac:name="plantuml"><ac:plain-text-body><![CDATA[@startuml\nAlice -> Bob: Hello\nBob --> Alice: Hi\n@enduml]]></ac:plain-text-body></ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('```plantuml\n@startuml\nAlice -> Bob: Hello\nBob --> Alice: Hi\n@enduml\n```');
+  });
+
+  test('plantuml macro with backticks in content uses adequate fence', () => {
+    const storage = '<ac:structured-macro ac:name="plantuml"><ac:plain-text-body><![CDATA[@startuml\n:``Main Process``;\n@enduml]]></ac:plain-text-body></ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('```plantuml\n@startuml\n:``Main Process``;\n@enduml\n```');
+  });
+
+  test('plantuml macro with surrounding content is separated by blank lines', () => {
+    const storage = '<p>Before</p><ac:structured-macro ac:name="plantuml"><ac:plain-text-body><![CDATA[@startuml\nA -> B\n@enduml]]></ac:plain-text-body></ac:structured-macro><p>After</p>';
+    expect(converter.storageToMarkdown(storage)).toBe('Before\n\n```plantuml\n@startuml\nA -> B\n@enduml\n```\n\nAfter');
+  });
+
+  test('non-fence content still has leading whitespace stripped', () => {
+    const storage = '<p>    hello world</p>';
+    expect(converter.storageToMarkdown(storage)).toBe('hello world');
+  });
+
+  test('cleanup still applies between fenced blocks', () => {
+    const storage = `<p>    para</p>${codeMacro('py', 'x = 1')}<p>    para2</p>`;
+    expect(converter.storageToMarkdown(storage)).toBe('para\n\n```py\nx = 1\n```\n\npara2');
+  });
+
+  test('# comment lines inside fenced code do not trigger header blank-line rule', () => {
+    const storage = codeMacro('python', '# comment\nx = 1');
+    expect(converter.storageToMarkdown(storage)).toBe('```python\n# comment\nx = 1\n```');
+  });
+
+  test('trailing whitespace inside fenced code is preserved', () => {
+    const storage = codeMacro('py', 'x = 1   \ny = 2   ');
+    expect(converter.storageToMarkdown(storage)).toBe('```py\nx = 1   \ny = 2   \n```');
+  });
+
+  test('consecutive blank lines inside fenced code are preserved (no 3+ collapse)', () => {
+    const storage = codeMacro('text', 'a\n\n\n\nb');
+    expect(converter.storageToMarkdown(storage)).toBe('```text\na\n\n\n\nb\n```');
+  });
+});
+
+describe('MacroConverter storageToMarkdown dynamic fence sizing', () => {
+  const converter = new MacroConverter({ isCloud: true });
+  const codeMacro = (lang, body) =>
+    `<ac:structured-macro ac:name="code"><ac:parameter ac:name="language">${lang}</ac:parameter><ac:plain-text-body><![CDATA[${body}]]></ac:plain-text-body></ac:structured-macro>`;
+
+  test('payload containing ``` uses a 4-backtick fence (CommonMark-safe)', () => {
+    const storage = codeMacro('md', 'before\n```\nafter');
+    expect(converter.storageToMarkdown(storage)).toBe('````md\nbefore\n```\nafter\n````');
+  });
+
+  test('payload containing a 4-backtick run uses a 5-backtick fence', () => {
+    const storage = codeMacro('md', 'x ```` y');
+    expect(converter.storageToMarkdown(storage)).toBe('`````md\nx ```` y\n`````');
+  });
+
+  test('payload with &#96; decimal entities for backticks sizes fence after decode', () => {
+    const storage = codeMacro('md', 'before\n&#96;&#96;&#96;\nafter');
+    expect(converter.storageToMarkdown(storage)).toBe('````md\nbefore\n```\nafter\n````');
+  });
+
+  test('payload with &#x60; hex entities for backticks sizes fence after decode', () => {
+    const storage = codeMacro('md', 'before\n&#x60;&#x60;&#x60;\nafter');
+    expect(converter.storageToMarkdown(storage)).toBe('````md\nbefore\n```\nafter\n````');
+  });
+
+  test('mermaid payload containing ``` uses a 4-backtick fence', () => {
+    const storage = '<ac:structured-macro ac:name="mermaid-macro"><ac:plain-text-body><![CDATA[graph TD\n    A["literal ```"] --> B]]></ac:plain-text-body></ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('````mermaid\ngraph TD\n    A["literal ```"] --> B\n````');
+  });
+
+  test('plantuml payload containing ``` uses a 4-backtick fence', () => {
+    const storage = '<ac:structured-macro ac:name="plantuml"><ac:plain-text-body><![CDATA[@startuml\n:```Main Process```;\n@enduml]]></ac:plain-text-body></ac:structured-macro>';
+    expect(converter.storageToMarkdown(storage)).toBe('````plantuml\n@startuml\n:```Main Process```;\n@enduml\n````');
+  });
+
+  test('prose with mid-line ``` before a code macro does not steal fence boundary', () => {
+    const storage = `<p>literal \`\`\` marker</p>${codeMacro('js', 'const x = 1;')}<p>tail</p>`;
+    expect(converter.storageToMarkdown(storage)).toBe('literal ``` marker\n\n```js\nconst x = 1;\n```\n\ntail');
+  });
+
+  test('prose with mid-line ``` before a code macro preserves the code body indent', () => {
+    const storage = `<p>before \`\`\` after</p>${codeMacro('py', 'def foo():\n    return 1')}`;
+    expect(converter.storageToMarkdown(storage)).toBe('before ``` after\n\n```py\ndef foo():\n    return 1\n```');
+  });
+});
+
+describe('MacroConverter integration smoke tests', () => {
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('code fence with literal HTML adjacent to an INFO marker does not corrupt either', () => {
+    // Regression for the CDATA-confused-by-blockquote-literal class: a code
+    // block whose body contains `<blockquote>` literal text used to derail
+    // the regex blockquote walker for any real blockquote that followed.
+    const result = converter.markdownToStorage(
+      '```html\n<blockquote>code</blockquote>\n```\n\n> **INFO**\n> after code'
+    );
+    expect(result).toContain('<![CDATA[<blockquote>code</blockquote>]]>');
+    expect(result).toContain('<ac:structured-macro ac:name="info">');
+    expect(result).toContain('after code');
+  });
+
+  test('htmlToConfluenceStorage transforms raw HTML directly (public CLI/API path)', () => {
+    // `confluence convert --input-format html` and `--format html` go through
+    // this method without first rendering markdown-it, so it must convert
+    // structural HTML on its own.
+    const html = '<blockquote>\n<p><strong>WARNING</strong></p>\n<p>raw html input</p>\n</blockquote>';
+    const result = converter.htmlToConfluenceStorage(html);
+    expect(result).toContain('<ac:structured-macro ac:name="warning">');
+    expect(result).toContain('raw html input');
+    expect(result).not.toContain('<strong>WARNING</strong>');
+  });
+
+  test('task list checkboxes survive as literal text — push-side write is not implemented', () => {
+    // Locks the current limitation. If/when a future change adds proper
+    // ac:task-list emission, this test will fail and signal the change.
+    const result = converter.markdownToStorage('- [ ] open\n- [x] done');
+    expect(result).toContain('<li><p>[ ] open</p></li>');
+    expect(result).toContain('<li><p>[x] done</p></li>');
+    expect(result).not.toContain('ac:task-list');
+  });
+
+  test('table cells receive `<p>` wrap for single-line content', () => {
+    // V1's `<td>(.*?)</td>` non-greedy regex wrapped single-line cells in
+    // `<p>`; the walker reproduces that for byte parity.
+    const result = converter.markdownToStorage('| h |\n|---|\n| c |');
+    expect(result).toContain('<th><p>h</p></th>');
+    expect(result).toContain('<td><p>c</p></td>');
+  });
+});
+
+describe('markdown with details/summary', () => {
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('details in markdown converts to expand macro', () => {
+    const md = `<details>
+<summary>Show more</summary>
+
+Hidden paragraph
+
+</details>`;
+    const out = converter.markdownToStorage(md);
+    expect(out).toContain('<ac:structured-macro ac:name="expand">');
+    expect(out).toContain('<ac:parameter ac:name="title">Show more</ac:parameter>');
+    expect(out).toContain('Hidden paragraph');
+  });
+
+  test('details with code block inside', () => {
+    const md = `<details>
+<summary>View code</summary>
+
+\`\`\`javascript
+console.log("test");
+\`\`\`
+
+</details>`;
+    const out = converter.markdownToStorage(md);
+    expect(out).toContain('<ac:structured-macro ac:name="expand">');
+    expect(out).toContain('<ac:structured-macro ac:name="code">');
+    expect(out).toContain('console.log');
+  });
+});
+
+describe('MacroConverter markdownToStorage plantuml code blocks', () => {
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('basic plantuml fenced code block produces plantuml macro', () => {
+    const result = converter.markdownToStorage('```plantuml\n@startuml\nA -> B\n@enduml\n```');
+    expect(result).toContain('<ac:structured-macro ac:name="plantuml">');
+    expect(result).toContain('<![CDATA[@startuml\nA -> B\n@enduml]]>');
+    expect(result).not.toContain('ac:parameter ac:name="language"');
+  });
+
+  test('plantuml block surrounded by content is separated correctly', () => {
+    const result = converter.markdownToStorage('Before\n\n```plantuml\nA -> B\n```\n\nAfter');
+    expect(result).toContain('<ac:structured-macro ac:name="plantuml">');
+    expect(result).toContain('<![CDATA[A -> B]]>');
+    expect(result).toContain('Before');
+    expect(result).toContain('After');
+  });
+
+  test('other languages still produce code macro with language param', () => {
+    const result = converter.markdownToStorage('```python\nx = 1\n```');
+    expect(result).toContain('<ac:structured-macro ac:name="code">');
+    expect(result).toContain('<ac:parameter ac:name="language">python</ac:parameter>');
+    expect(result).not.toContain('ac:name="plantuml"');
+  });
+});
+
+describe('markdown with HTML blocks', () => {
+  const converter = new MacroConverter({ isCloud: true });
+
+  test('SVG in markdown wraps in HTML macro', () => {
+    const md = `<svg width="50" height="50">
+  <circle cx="25" cy="25" r="20"/>
+</svg>`;
+    const out = converter.markdownToStorage(md);
+    expect(out).toContain('<ac:structured-macro ac:name="html"');
+    expect(out).toContain('<![CDATA[<svg');
+  });
+});
